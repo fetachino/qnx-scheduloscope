@@ -1,0 +1,43 @@
+# A starter Scheduloscope model.
+#
+# Every duration is in microseconds unless it carries a unit suffix
+# (us, ms, s). Edit the numbers to match measurements from your board; the
+# analysis is only as good as the CPU budgets you give it.
+schema: scheduloscope/v1
+name: my-system
+description: Two periodic threads sharing a mutex, plus one interrupt.
+
+clock:
+  periodUs: 1ms
+  roundRobinTimesliceTicks: 4
+
+cpu:
+  cores: 1
+  contextSwitchUs: 2
+
+interrupts:
+  sources:
+    - name: adc
+      periodUs: 500us
+      serviceUs: 25us
+
+resources:
+  - name: stateLock
+    protocol: inherit
+
+tasks:
+  - name: control
+    priority: 60
+    policy: fifo
+    periodUs: 1ms
+    segments:
+      - cpu: 120us
+      - cs: { resource: stateLock, workUs: 40us }
+
+  - name: telemetry
+    priority: 20
+    policy: rr
+    periodUs: 10ms
+    segments:
+      - cs: { resource: stateLock, workUs: 30us }
+      - cpu: 300us

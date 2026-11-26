@@ -1,0 +1,33 @@
+
+Scheduloscope {{VERSION}} — real-time scheduling analysis for QNX OS 8.0
+
+Usage
+  scheduloscope <command> <model.yaml> [options]
+
+Commands
+  check      parse and validate the model, nothing else
+  analyze    response-time analysis; the default when a model is given
+  simulate   run the deterministic QNX-semantics simulator
+  report     write Markdown and HTML reports
+  gen        generate a QNX 8.0 C measurement harness
+  init       write a starter model you can edit
+
+Options
+  -o, --out <path>       output file or directory
+  -d, --duration <time>  simulation or measurement window (e.g. 100ms)
+  -s, --seed <n>         simulator seed (default: from the model)
+      --html <path>      report: HTML output path
+      --md <path>        report: Markdown output path
+      --json             machine-readable output on stdout
+  -q, --quiet            suppress the summary, keep diagnostics
+      --force            init: overwrite an existing file
+      --no-color         disable ANSI colour
+  -h, --help             show this help
+
+Exit codes
+  0  analysis completed and the task set is schedulable
+  1  validation errors, or the task set is unschedulable
+  2  usage error
+
+Example
+  scheduloscope report examples/motor-control.yaml --out demo/
