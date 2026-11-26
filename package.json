@@ -1,0 +1,46 @@
+{
+  "name": "scheduloscope",
+  "version": "1.0.0",
+  "description": "Design-time real-time scheduling analysis, simulation, and on-target workload generation for QNX 8.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "scheduloscope": "dist/src/cli/main.js",
+    "slscope": "dist/src/cli/main.js"
+  },
+  "main": "dist/src/index.js",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "examples",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "clean": "node scripts/clean.mjs",
+    "test": "npm run build && node --test \"dist/tests/*.test.js\"",
+    "test:only": "node --test dist/tests/",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "demo": "node dist/src/cli/main.js report examples/motor-control.yaml --html demo/motor-control.html --md demo/motor-control.md",
+    "bench": "node dist/bench/run.js"
+  },
+  "dependencies": {
+    "yaml": "^2.5.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "@types/node": "^22.9.0"
+  },
+  "keywords": [
+    "qnx",
+    "real-time",
+    "scheduling",
+    "embedded",
+    "rtos",
+    "response-time-analysis"
+  ]
+}
