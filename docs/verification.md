@@ -177,7 +177,10 @@ page gives the equivalent buildfile snippet `libc.so`, `libgcc_s.so.1`,
 `/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2`; the [system buildfile sample](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.building/topic/buildfiles/buildfile_structure.html)
 uses `procmgr_symlink ../../proc/boot/ldqnx-64.so.2 /usr/lib/ldqnx-64.so.2` in its startup script.
 The template was **not** run through `mkifs` here: without the SDP its exact output cannot be
-verified, so it remains labelled unbuilt.
+verified, so it remains labelled unbuilt. The filename and interpreter path are the ones the QNX 8
+documentation uses; the loader's `SONAME`/`DT_NEEDED` entries were not inspected without the SDP.
+On an SDP machine the remaining check is `readelf -d $QNX_TARGET/x86_64/lib/ldqnx-64.so.2`, then
+`mkifs` and a boot that runs `scheduloscope-harness`.
 
 ## QNX API review against the 8.0 documentation
 
