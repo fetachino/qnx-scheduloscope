@@ -1,0 +1,26 @@
+# mkifs build script template for a bootable x86_64 QNX image that starts the
+# measurement harness. Adjust paths to your SDP installation and to your board.
+#
+#   source ~/qnx800/qnxsdp-env.sh
+#   mkifs -v image.build image.ifs
+#
+# This is a starting point, not a tested boot image: it was not built in the
+# environment where Scheduloscope was developed (no QNX SDP licence available).
+
+[virtual=x86_64,elf] .bootstrap = {
+    startup-x86-64 -v
+    PATH=/proc/boot:/bin:/usr/bin LD_LIBRARY_PATH=/proc/boot:/lib:/usr/lib
+    procnto-smp-instr -P 63
+}
+
+[+script] .script = {
+    devc-ser8250
+    pipe
+    /proc/boot/scheduloscope-harness -d 30000 -o /tmp/report.json
+}
+
+[data=copy] /proc/boot = {
+    scheduloscope-harness
+}
+
+# System: {{SYSTEM_NAME}}
