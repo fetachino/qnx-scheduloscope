@@ -13,6 +13,8 @@ QNX target to measure the numbers the model only estimated.
 
 ![Scheduloscope report](assets/report.png)
 
+[Open the generated report](https://fetachino.github.io/qnx-scheduloscope/demo/motor-control.html) - one self-contained HTML file, no server, no build step.
+
 ---
 
 ## The problem
