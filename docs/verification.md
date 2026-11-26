@@ -23,7 +23,7 @@ npm ci
 npm test        # tsc -p tsconfig.json && node --test "dist/tests/*.test.js"
 ```
 
-Result: **70 tests, 70 passing, 0 failing**, about 2 seconds.
+Result: **71 tests, 71 passing, 0 failing**, about 2 seconds.
 
 | File | Tests | Covers |
 | --- | --- | --- |
@@ -35,6 +35,7 @@ Result: **70 tests, 70 passing, 0 failing**, about 2 seconds.
 | `tests/report.test.ts` | 6 | Summary numbers, Markdown and HTML structure, HTML escaping, diagnostics merging. |
 | `tests/codegen.test.ts` | 7 | Generated C contents, real tabs in the Makefile, `_NTO_CHF_FIXED_PRIORITY`, unsupported segments. |
 | `tests/cli.test.ts` | 8 | Exit codes 0/1/2, `--json`, `gen`, `init --force`, missing file handling. |
+| `tests/api.test.ts` | 1 | The whole pipeline through the public entry point. |
 
 ## Determinism
 

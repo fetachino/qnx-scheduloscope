@@ -25,7 +25,7 @@ First release, built for the QNX Everywhere Hackathon.
   `Makefile` for `nto/x86_64` and `nto/aarch64le`, and an `image.build` template.
 - CLI with `check`, `analyze`, `simulate`, `report`, `gen`, `init`, `version` and stable exit
   codes, plus `--json` output.
-- 70 automated tests, GitHub Actions CI across Windows and Linux, and a job that compiles and
+- 71 automated tests, GitHub Actions CI across Windows and Linux, and a job that compiles and
   runs the generated harness with `gcc -Werror`.
 
 ### Notes

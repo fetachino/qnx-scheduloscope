@@ -209,13 +209,13 @@ harness can never drift apart.
 
 ## Verification
 
-Everything that can be checked on a host is checked on a host: 70 automated tests, a TypeScript
+Everything that can be checked on a host is checked on a host: 71 automated tests, a TypeScript
 build with `strict` and `noUncheckedIndexedAccess`, and a CI job that compiles the generated
 harness with `gcc -Wall -Wextra` and runs it.
 
 | Area | Status |
 | --- | --- |
-| Parser, validator, units | 70 tests, passing |
+| Parser, validator, units | 71 tests, passing |
 | RTA against hand-computed cases | passing (see `tests/rta.test.ts`) |
 | Simulator semantics (PI, PCP, RR, sporadic, ISR) | passing |
 | Report and SVG generation | passing |
@@ -227,8 +227,27 @@ Being explicit about that last row is part of the design. The QNX backend is wri
 labelled build-ready rather than verified. [docs/verification.md](docs/verification.md) has the
 full matrix, the exact commands, and what each row would need to move to *verified*.
 
-## Documentation
+## As a library
 
+The CLI is a thin layer over pure functions, so the same pipeline can run inside a build or a
+test:
+
+```ts
+import { analyzeResponseTimes, derive, parseModel, simulate } from 'scheduloscope';
+
+const { model, diagnostics } = parseModel(source);
+if (!model) throw new Error('invalid model');
+
+const derived = derive(model);
+const analysis = analyzeResponseTimes(model, derived);
+const sim = simulate(model);
+
+console.log(analysis.verdict, sim.contextSwitches, diagnostics.length);
+```
+
+Every export is typed and the entry point re-exports the model types.
+
+## Documentation
 - [Model reference](docs/model-reference.md) - every field, default and unit.
 - [QNX semantics](docs/qnx-semantics.md) - what the simulator reproduces and why, with the
   8.0 behaviour it mirrors.
