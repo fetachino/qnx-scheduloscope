@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: node ${{ matrix.node }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  harness:
+    name: generated C harness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Generate the harness for both examples
+        run: |
+          node dist/src/cli/main.js gen examples/motor-control.yaml --out harness/motor -d 2000ms
+          node dist/src/cli/main.js gen examples/sporadic-sensor.yaml --out harness/sporadic -d 2000ms
+      - name: Compile and run with gcc, warnings are errors
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w/harness/motor gcc:13 sh -c '
+            make CFLAGS="-O2 -g -Wall -Wextra -Werror -std=c11 -D_GNU_SOURCE" &&
+            ./scheduloscope-harness -d 500 -o report.json &&
+            cat report.json'
+      - name: Check the report is well formed
+        run: |
+          node -e "const r = require('./harness/motor/report.json'); if (r.platform !== 'posix') throw new Error('platform'); if (!Array.isArray(r.tasks) || r.tasks.length !== 5) throw new Error('tasks'); console.log('report ok:', r.tasks.length, 'tasks');"
+
+  report:
+    name: demo report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node dist/src/cli/main.js report examples/motor-control.yaml --out demo/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: motor-control-report
+          path: |
+            demo/motor-control.html
+            demo/motor-control.md
+
