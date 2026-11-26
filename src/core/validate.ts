@@ -119,15 +119,19 @@ function checkSchedulingPolicies(model: SystemModel, bag: DiagnosticBag): void {
     if (s.lowPriority >= task.priority) {
       bag.error('E_SPORADIC_ORDER', `The low priority (${s.lowPriority}) must be lower than the normal priority (${task.priority}).`, `${path}.lowPriority`);
     }
-    if (s.initBudgetUs >= s.replenishPeriodUs) {
+    if (s.initBudgetUs > s.replenishPeriodUs) {
       bag.error(
         'E_SPORADIC_BUDGET',
-        `The initial budget (${s.initBudgetUs}us) must be smaller than the replenishment period (${s.replenishPeriodUs}us).`,
+        `The initial budget (${s.initBudgetUs}us) cannot be larger than the replenishment period (${s.replenishPeriodUs}us); QNX returns EINVAL for that.`,
         `${path}.budget`,
       );
     }
     if (s.maxReplenishments > 32) {
-      bag.warn('W_SPORADIC_REPL', `maxReplenishments ${s.maxReplenishments} is above the usual 32-entry kernel limit (SS_REPL_MAX).`, `${path}.maxReplenishments`);
+      bag.info(
+        'I_SPORADIC_REPL',
+        `${s.maxReplenishments} pending replenishments is legal (the kernel allows up to SS_REPL_MAX, 65535) but larger than any design this tool has seen.`,
+        `${path}.maxReplenishments`,
+      );
     }
     bag.info(
       'I_SPORADIC_BUDGET',
@@ -163,7 +167,7 @@ function checkSelfSuspension(model: SystemModel, bag: DiagnosticBag): void {
       'W_SELF_SUSPENSION',
       `${task.name} sleeps inside its job. Classic response-time analysis assumes no self-suspension, so the bound below is optimistic for this task.`,
       `tasks[${i}].segments`,
-      'Modelate the wait as a separate task, or subtract it from the schedulable budget by hand.',
+      'Model the wait as a separate task, or subtract it from the schedulable budget by hand.',
     );
   });
 }
@@ -240,7 +244,6 @@ function checkChannelCycles(model: SystemModel, bag: DiagnosticBag): void {
     state.set(name, 'done');
   };
   for (const channel of model.channels) walk(channel.name);
-  void byName;
 }
 
 function checkMutexProtocols(model: SystemModel, bag: DiagnosticBag): void {

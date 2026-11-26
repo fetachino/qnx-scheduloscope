@@ -106,3 +106,45 @@ test('parses every segment kind', () => {
   ].join('\n')));
   assert.deepEqual(model.tasks[0]!.segments.map((s) => s.kind), ['cpu', 'cs', 'rpc', 'sleep', 'yield', 'setPriority']);
 });
+
+test('accepts SS_REPL_MAX and rejects values above it', () => {
+  const base = [
+    'schema: scheduloscope/v1',
+    'name: repl',
+    'tasks:',
+    '  - name: sensor',
+    '    priority: 50',
+    '    period: 2ms',
+    '    deadline: 2ms',
+    '    policy: sporadic',
+    '    sporadic:',
+    '      lowPriority: 10',
+    '      budget: 100us',
+    '      replenishPeriod: 1ms',
+  ];
+  const ok = parseModel([...base, '      maxReplenishments: 65535', '    segments:', '      - cpu: 50us'].join('\n'));
+  assert.equal(ok.diagnostics.filter((d) => d.severity === 'error').length, 0);
+  assert.equal(ok.model?.tasks[0]?.sporadic?.maxReplenishments, 65535);
+  const tooBig = parseModel([...base, '      maxReplenishments: 65536', '    segments:', '      - cpu: 50us'].join('\n'));
+  requireCode(tooBig.diagnostics, 'E_RANGE');
+});
+
+test('caps the sporadic low priority at 252, the SDP 8.x limit', () => {
+  const source = [
+    'schema: scheduloscope/v1',
+    'name: low',
+    'tasks:',
+    '  - name: sensor',
+    '    priority: 50',
+    '    period: 2ms',
+    '    deadline: 2ms',
+    '    policy: sporadic',
+    '    sporadic:',
+    '      lowPriority: 253',
+    '      budget: 100us',
+    '      replenishPeriod: 1ms',
+    '    segments:',
+    '      - cpu: 50us',
+  ].join('\n');
+  requireCode(parseModel(source).diagnostics, 'E_RANGE');
+});

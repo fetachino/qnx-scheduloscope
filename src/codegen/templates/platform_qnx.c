@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/neutrino.h>
+#include <sys/procmgr.h>
 #include <sys/syspage.h>
 #include <time.h>
 #include <unistd.h>
@@ -36,6 +37,23 @@ int ss_init(void) {
     g_cycles_per_us = (uint64_t)SYSPAGE_ENTRY(qtime)->cycles_per_sec / 1000000ull;
     if (g_cycles_per_us == 0) g_cycles_per_us = 1;
     g_epoch_cycles = ClockCycles();
+
+#if SS_MAX_PRIORITY > 63
+    /*
+     * Priorities above the unprivileged ceiling (procnto -P, 63 by default)
+     * need PROCMGR_AID_PRIORITY. Ask for it for ourselves; if the process is
+     * not allowed to, keep going and say so, because the measurement is still
+     * useful at the clamped priority. Running as root grants it implicitly.
+     */
+    if (procmgr_ability(0,
+                        PROCMGR_ADN_NONROOT | PROCMGR_AOP_ALLOW | PROCMGR_AID_PRIORITY,
+                        PROCMGR_AID_EOL) != 0) {
+        fprintf(stderr,
+                "[scheduloscope] cannot enable priorities above 63 (%s); run as root or "
+                "start the harness with 'on -P %d'\n",
+                strerror(errno), (int)SS_MAX_PRIORITY);
+    }
+#endif
     return 0;
 }
 
@@ -222,5 +240,7 @@ int ss_channel_reply(ss_channel *c, int client, const void *buf, size_t len) {
 int ss_channel_send(ss_channel *c, const void *buf, size_t len) {
     channel_impl *impl = (channel_impl *)c->impl;
     if (!impl) return -1;
-    return MsgSend(impl->coid, buf, len, NULL, 0) == 0 ? 0 : -1;
+    /* The server replies, so give the kernel a reply buffer to write into. */
+    char reply[64];
+    return MsgSend(impl->coid, buf, len, reply, sizeof(reply)) == 0 ? 0 : -1;
 }

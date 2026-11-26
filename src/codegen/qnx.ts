@@ -92,7 +92,13 @@ export function emitWorkload(model: SystemModel, durationUs: Micros, unsupported
   out.push('#define SS_CHANNEL_COUNT ' + String(model.channels.length));
   out.push('#define SS_RESOURCE_COUNT ' + String(model.resources.length));
   out.push('#define SS_DURATION_US ' + String(durationUs) + 'ull');
+  const maxPriority = Math.max(
+    1,
+    ...model.tasks.map((task) => task.priority),
+    ...model.channels.map((channel) => channel.basePriority),
+  );
   out.push('#define SS_SYSTEM_NAME ' + cString(model.name));
+  out.push('#define SS_MAX_PRIORITY ' + String(maxPriority));
   out.push('');
   out.push('typedef enum { SS_SEG_CPU = 0, SS_SEG_CS = 1, SS_SEG_RPC = 2, SS_SEG_SLEEP = 3 } ss_seg_kind;');
   out.push('typedef struct { ss_seg_kind kind; int index; unsigned us; } ss_segment;');

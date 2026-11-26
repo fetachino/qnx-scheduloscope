@@ -8,7 +8,7 @@
 # environment where Scheduloscope was developed (no QNX SDP licence available).
 
 [virtual=x86_64,elf] .bootstrap = {
-    startup-x86-64 -v
+    startup-x86_64 -v
     PATH=/proc/boot:/bin:/usr/bin LD_LIBRARY_PATH=/proc/boot:/lib:/usr/lib
     procnto-smp-instr -P 63
 }
@@ -21,6 +21,9 @@
 
 [data=copy] /proc/boot = {
     scheduloscope-harness
+    # A dynamically linked harness also needs libc.so (and libgcc_s.so) from
+    # $QNX_TARGET/x86_64/lib; build it with `qcc -static` to keep the image small
+    # and self-contained, which is what the line above assumes.
 }
 
 # System: {{SYSTEM_NAME}}

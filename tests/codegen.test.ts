@@ -74,3 +74,41 @@ test('honours an explicit measurement window', () => {
   assert.match(workload, /#define SS_DURATION_US 250000/);
 });
 
+
+test('the workload publishes the highest priority so the backend can ask for the ability', () => {
+  const harness = generate();
+  const workload = harness.files.find((file) => file.path === 'workload.h')!.content;
+  assert.match(workload, /#define SS_MAX_PRIORITY 60/);
+  const qnx = harness.files.find((file) => file.path === 'platform_qnx.c')!.content;
+  assert.match(qnx, /procmgr_ability/);
+  assert.match(qnx, /PROCMGR_AID_PRIORITY/);
+  assert.match(qnx, /SS_MAX_PRIORITY > 63/);
+});
+
+test('the image build file names the x86_64 startup and warns about static linking', () => {
+  const harness = generate();
+  const build = harness.files.find((file) => file.path === 'image.build.template')!.content;
+  assert.match(build, /startup-x86_64/);
+  assert.match(build, /qcc -static/);
+  assert.match(build, /procnto-smp-instr/);
+});
+
+test('the channel send path provides a reply buffer for MsgReply', () => {
+  const harness = generate(TWO_TASKS.replace('segments:', 'segments:').replace('name: fast', 'name: fast'));
+  const qnx = harness.files.find((file) => file.path === 'platform_qnx.c')!.content;
+  assert.match(qnx, /char reply\[64\];/);
+  assert.match(qnx, /MsgSend\(impl->coid, buf, len, reply, sizeof\(reply\)\)/);
+});
+
+test('the QNX backend releases channels, mutexes and thread arguments', () => {
+  const harness = generate();
+  const qnx = harness.files.find((file) => file.path === 'platform_qnx.c')!.content;
+  // The connect failure path must not leak the channel, and destroy must undo both objects.
+  assert.match(qnx, /ConnectAttach\(0, 0, impl->chid, _NTO_SIDE_CHANNEL, 0\)/);
+  assert.match(qnx, /ChannelDestroy\(impl->chid\);\s*\n\s*free\(impl\);/);
+  assert.match(qnx, /ConnectDetach\(impl->coid\);\s*\n\s*ChannelDestroy\(impl->chid\);\s*\n\s*free\(impl\);/);
+  assert.match(qnx, /free\(args\);/);
+  const harnessC = harness.files.find((file) => file.path === 'harness.c')!.content;
+  // The trampoline owns its copy of the start arguments, so it frees them exactly once.
+  assert.equal((harnessC.match(/free\(arg\);/g) ?? []).length, 2);
+});

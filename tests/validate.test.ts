@@ -99,3 +99,41 @@ test('ignores the rate-monotonic note when priorities follow the periods', () =>
   const diagnostics = validateModel(model);
   assert.equal(diagnostics.filter((d) => d.code === 'I_RATE_MONOTONIC').length, 0);
 });
+
+function sporadicFixture(budget: string, replenish: string, maxRepl?: string): string {
+  const lines = [
+    'schema: scheduloscope/v1',
+    'name: sporadic-fixture',
+    'tasks:',
+    '  - name: sensor',
+    '    priority: 50',
+    '    period: 2ms',
+    '    deadline: 2ms',
+    '    policy: sporadic',
+    '    sporadic:',
+    '      lowPriority: 10',
+    '      budget: ' + budget,
+    '      replenishPeriod: ' + replenish,
+  ];
+  if (maxRepl) lines.push('      maxReplenishments: ' + maxRepl);
+  lines.push('    segments:', '      - cpu: 100us');
+  return lines.join('\n');
+}
+
+test('accepts a sporadic budget equal to the replenishment period', () => {
+  // QNX returns EINVAL only when the period is shorter than the budget, so
+  // equality is legal even though it leaves no slack in the schedule.
+  const diagnostics = validate(sporadicFixture('200us', '200us'));
+  assert.deepEqual(diagnostics.filter((d) => d.code === 'E_SPORADIC_BUDGET'), []);
+});
+
+test('rejects a sporadic budget larger than the replenishment period', () => {
+  requireCode(validate(sporadicFixture('400us', '200us')), 'E_SPORADIC_BUDGET');
+});
+
+test('reports a large replenishment count as information, not a kernel limit', () => {
+  const diagnostics = validate(sporadicFixture('100us', '1ms', '40'));
+  const info = requireCode(diagnostics, 'I_SPORADIC_REPL');
+  assert.match(info.message, /65535/);
+  assert.equal(diagnostics.filter((d) => d.code === 'W_SPORADIC_REPL').length, 0);
+});
