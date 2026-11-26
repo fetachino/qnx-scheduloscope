@@ -532,11 +532,11 @@ function parseTasks(value: unknown, bag: DiagnosticBag): TaskModel[] | undefined
       } else {
         checkKeys(map, ['lowPriority', 'budget', 'budgetUs', 'initBudgetUs', 'replenishPeriod', 'replenishPeriodUs', 'maxReplenishments'], `${path}.sporadic`, bag);
         // QNX SDP 8.x: sporadic low priority 1..252, because the normal priority must be 2..253.
-  const lowPriority = num(map['lowPriority'], `${path}.sporadic.lowPriority`, bag, { integer: true, min: 1, max: 252, required: true });
+        const lowPriority = num(map['lowPriority'], `${path}.sporadic.lowPriority`, bag, { integer: true, min: 1, max: 252, required: true });
         const initBudgetUs = duration(map['budget'] ?? map['budgetUs'] ?? map['initBudgetUs'], `${path}.sporadic.budget`, bag, { required: true, min: 1 });
         const replenishPeriodUs = duration(map['replenishPeriod'] ?? map['replenishPeriodUs'], `${path}.sporadic.replenishPeriod`, bag, { required: true, min: 1 });
         // SS_REPL_MAX is 65535 in QNX; the older 32 limit is not an OS constraint.
-  const maxReplenishments = num(map['maxReplenishments'], `${path}.sporadic.maxReplenishments`, bag, { integer: true, min: 1, max: 65535, fallback: 3 });
+        const maxReplenishments = num(map['maxReplenishments'], `${path}.sporadic.maxReplenishments`, bag, { integer: true, min: 1, max: 65535, fallback: 3 });
         if (lowPriority !== undefined && initBudgetUs !== undefined && replenishPeriodUs !== undefined && maxReplenishments !== undefined) {
           sporadic = { lowPriority, initBudgetUs, replenishPeriodUs, maxReplenishments };
         }

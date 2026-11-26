@@ -17,6 +17,7 @@
  *   qcc -V gcc_ntox86_64 -O2 -Wall -o scheduloscope-harness harness.c platform_qnx.c
  */
 #include "platform.h"
+#include "workload_config.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -32,6 +33,9 @@
 
 static uint64_t g_cycles_per_us;
 static uint64_t g_epoch_cycles;
+static int g_scheduling_enforced = 1;
+
+int ss_scheduling_enforced(void) { return g_scheduling_enforced; }
 
 int ss_init(void) {
     g_cycles_per_us = (uint64_t)SYSPAGE_ENTRY(qtime)->cycles_per_sec / 1000000ull;
@@ -120,9 +124,26 @@ int ss_thread_start(ss_thread *t, const char *name, int priority, int policy,
         param.sched_ss_max_repl = sporadic_max_repl > 0 ? sporadic_max_repl : 1;
     }
 
-    pthread_attr_setschedpolicy(&attr, sched_policy);
-    if (pthread_attr_setschedparam(&attr, &param) != 0) {
-        fprintf(stderr, "[scheduloscope] cannot set parameters for %s\n", name ? name : "thread");
+    int policy_rc = pthread_attr_setschedpolicy(&attr, sched_policy);
+    if (policy_rc != 0) {
+        fprintf(stderr,
+                "[scheduloscope] cannot set policy %d for %s (priority %d): %s; "
+                "the workload would not run as modelled\n",
+                (int)sched_policy, name ? name : "thread", priority, strerror(policy_rc));
+        pthread_attr_destroy(&attr);
+        free(args);
+        return -1;
+    }
+
+    int param_rc = pthread_attr_setschedparam(&attr, &param);
+    if (param_rc != 0) {
+        fprintf(stderr,
+                "[scheduloscope] cannot set priority %d for %s: %s; the workload would not run as "
+                "modelled (a priority above the process limit needs PROCMGR_AID_PRIORITY or root)\n",
+                priority, name ? name : "thread", strerror(param_rc));
+        pthread_attr_destroy(&attr);
+        free(args);
+        return -1;
     }
 
     pthread_t thread;

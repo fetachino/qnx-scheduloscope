@@ -307,8 +307,9 @@ function commandSimulate(loaded: LoadedModel, values: Record<string, unknown>): 
       '\n' +
         dim(
           'simulated ' + formatDuration(sim.horizonUs) + '  ·  seed ' + String(sim.seed) + '  ·  ' +
-            String(sim.contextSwitches) + ' context switches  ·  ' + String(sim.inversions.length) + ' inversions  ·  ' +
-            String(sim.deadlineMisses.length) + ' misses',
+            String(sim.contextSwitches) + ' context switches  ·  ' + String(sim.inversions.length) +
+            (sim.inversions.length === 1 ? ' inversion  ·  ' : ' inversions  ·  ') + String(sim.deadlineMisses.length) +
+            (sim.deadlineMisses.length === 1 ? ' miss' : ' misses'),
         ) + '\n',
     );
     for (const inversion of sim.inversions.slice(0, 5)) {

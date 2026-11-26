@@ -45,12 +45,14 @@ jobs:
       - name: Compile and run with gcc, warnings are errors
         run: |
           docker run --rm -v "$PWD:/w" -w /w/harness/motor gcc:13 sh -c '
-            make CFLAGS="-O2 -g -Wall -Wextra -Werror -std=c11 -D_GNU_SOURCE" &&
+            make CFLAGS="-O2 -g -Wall -Wextra -Wundef -Werror -std=c11 -D_GNU_SOURCE" &&
             ./scheduloscope-harness -d 500 -o report.json &&
             cat report.json'
       - name: Check the report is well formed
         run: |
-          node -e "const r = require('./harness/motor/report.json'); if (r.platform !== 'posix') throw new Error('platform'); if (!Array.isArray(r.tasks) || r.tasks.length !== 5) throw new Error('tasks'); console.log('report ok:', r.tasks.length, 'tasks');"
+          node -e "const r = require('./harness/motor/report.json'); if (r.platform !== 'posix') throw new Error('platform'); if (!Array.isArray(r.tasks) || r.tasks.length !== 5) throw new Error('tasks'); if (!['enforced','best-effort'].includes(r.scheduling)) throw new Error('scheduling'); if (r.interrupts_reproduced !== false) throw new Error('interrupts'); for (const t of r.tasks) { if (t.max_us < t.max_activation_latency_us) throw new Error('latency ' + t.name); } console.log('report ok:', r.tasks.length, 'tasks, scheduling', r.scheduling);"
+      - name: Compile and run the POSIX harness and its failure paths
+        run: npm run check:c
 
   report:
     name: demo report

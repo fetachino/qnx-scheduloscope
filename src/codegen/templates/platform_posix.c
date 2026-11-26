@@ -22,6 +22,9 @@
 #include <time.h>
 
 static uint64_t g_epoch;
+static int g_scheduling_enforced = 1;
+
+int ss_scheduling_enforced(void) { return g_scheduling_enforced; }
 
 static uint64_t raw_now_us(void) {
     struct timespec ts;
@@ -83,25 +86,47 @@ int ss_thread_start(ss_thread *t, const char *name, int priority, int policy,
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+    pthread_attr_setstacksize(&attr, 256 * 1024);
 
     struct sched_param param;
     memset(&param, 0, sizeof(param));
     param.sched_priority = priority;
     int sched_policy = SCHED_FIFO;
     if (policy == SS_POLICY_RR) sched_policy = SCHED_RR;
-    pthread_attr_setschedpolicy(&attr, sched_policy);
-    pthread_attr_setschedparam(&attr, &param);
+
+#ifdef SS_FORCE_SCHED_FAILURE
+    /* Test hook: exercises the hard-failure path without a QNX target. */
+    fprintf(stderr, "[scheduloscope] injected scheduling failure for %s\n", name ? name : "thread");
+    pthread_attr_destroy(&attr);
+    free(args);
+    return -1;
+#endif
+
+    int policy_rc = pthread_attr_setschedpolicy(&attr, sched_policy);
+    int param_rc = pthread_attr_setschedparam(&attr, &param);
+#ifdef SS_FORCE_SCHED_FALLBACK
+    /* Test hook: exercises the documented best-effort fallback. */
+    policy_rc = EINVAL;
+#endif
+    if (policy_rc != 0 || param_rc != 0) {
+        fprintf(stderr,
+                "[scheduloscope] host cannot enforce policy %d at priority %d for %s (%s); continuing "
+                "best-effort, so the report will not describe the modelled system\n",
+                sched_policy, priority, name ? name : "thread",
+                strerror(policy_rc != 0 ? policy_rc : param_rc));
+        g_scheduling_enforced = 0;
+        pthread_attr_destroy(&attr);
+        pthread_attr_init(&attr);
+        pthread_attr_setstacksize(&attr, 256 * 1024);
+    }
 
     pthread_t thread;
     int rc = pthread_create(&thread, &attr, trampoline, args);
     if (rc != 0) {
         /* Unprivileged hosts reject real-time priorities; fall back so the
-         * harness still runs, and say so once. */
-        static int warned;
-        if (!warned) {
-            fprintf(stderr, "[scheduloscope] cannot set real-time priorities (%s); running with default policy\n", strerror(rc));
-            warned = 1;
-        }
+         * harness still runs, and mark the run best-effort. */
+        fprintf(stderr, "[scheduloscope] cannot set real-time priorities (%s); running with default policy\n", strerror(rc));
+        g_scheduling_enforced = 0;
         pthread_attr_destroy(&attr);
         pthread_attr_init(&attr);
         rc = pthread_create(&thread, &attr, trampoline, args);
@@ -187,6 +212,12 @@ typedef struct {
 } channel_impl;
 
 int ss_channel_create(ss_channel *c, int fixed_priority) {
+#ifdef SS_FORCE_CHANNEL_FAILURE
+    /* Test hook: exercises partial-initialization cleanup. */
+    (void)c;
+    (void)fixed_priority;
+    return -1;
+#endif
     channel_impl *impl = (channel_impl *)calloc(1, sizeof(*impl));
     if (!impl) return -1;
     pthread_mutex_init(&impl->mu, NULL);

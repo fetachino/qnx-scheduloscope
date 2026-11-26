@@ -40,6 +40,14 @@ struct ss_channel {
 int ss_init(void);
 void ss_shutdown(void);
 
+/*
+ * Non-zero when every thread actually got the scheduling policy and priority
+ * the workload asked for. On QNX a thread that cannot be configured is a hard
+ * error; on a POSIX host the backend may fall back, and the report then says
+ * so instead of pretending the numbers describe the modelled system.
+ */
+int ss_scheduling_enforced(void);
+
 /* Monotonic microseconds since ss_init(). */
 uint64_t ss_now_us(void);
 

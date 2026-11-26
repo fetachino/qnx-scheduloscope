@@ -2,10 +2,12 @@
 # measurement harness. Adjust paths to your SDP installation and to your board.
 #
 #   source ~/qnx800/qnxsdp-env.sh
-#   mkifs -v image.build image.ifs
+#   mkifs -v image.build.template image.ifs
 #
 # This is a starting point, not a tested boot image: it was not built in the
 # environment where Scheduloscope was developed (no QNX SDP licence available).
+# The harness is dynamically linked, so libc.so and libgcc_s.so are copied next
+# to it; build with `qcc -static` instead if you prefer a single static binary.
 
 [virtual=x86_64,elf] .bootstrap = {
     startup-x86_64 -v
@@ -16,14 +18,17 @@
 [+script] .script = {
     devc-ser8250
     pipe
+    # /tmp is the in-image, writable directory created below.
     /proc/boot/scheduloscope-harness -d 30000 -o /tmp/report.json
 }
 
+# In-memory directory the harness can write to even without a disk driver.
+[type=dir perms=0777] /tmp
+
 [data=copy] /proc/boot = {
     scheduloscope-harness
-    # A dynamically linked harness also needs libc.so (and libgcc_s.so) from
-    # $QNX_TARGET/x86_64/lib; build it with `qcc -static` to keep the image small
-    # and self-contained, which is what the line above assumes.
+    $QNX_TARGET/x86_64/lib/libc.so
+    $QNX_TARGET/x86_64/lib/libgcc_s.so
 }
 
 # System: {{SYSTEM_NAME}}

@@ -1,6 +1,6 @@
 {
   "name": "scheduloscope",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Design-time real-time scheduling analysis, simulation, and on-target workload generation for QNX 8.0",
   "license": "Apache-2.0",
   "type": "module",
@@ -24,6 +24,7 @@
     "clean": "node scripts/clean.mjs",
     "test": "npm run build && node scripts/test.mjs",
     "test:only": "node scripts/test.mjs",
+    "check:c": "node scripts/c-harness-check.mjs",
     "lint": "tsc -p tsconfig.json --noEmit",
     "demo": "node dist/src/cli/main.js report examples/motor-control.yaml --html demo/motor-control.html --md demo/motor-control.md",
     "bench": "node dist/bench/run.js"

@@ -64,12 +64,12 @@ test('init writes a starter model and refuses to clobber it without --force', ()
   assert.equal(check.code, 0, check.err);
 });
 
-test('gen writes a harness that the C compiler can build', () => {
+test('gen writes the documented harness files', () => {
   const dir = mkdtempSync(join(tmpdir(), 'sched-gen-'));
   const run = cli(['gen', 'examples/motor-control.yaml', '--out', join(dir, 'harness')]);
   assert.equal(run.code, 0, run.err);
   const harness = join(dir, 'harness');
-  for (const file of ['workload.h', 'harness.c', 'platform.h', 'platform_posix.c', 'platform_qnx.c', 'Makefile']) {
+  for (const file of ['workload.h', 'workload_config.h', 'harness.c', 'platform.h', 'platform_posix.c', 'platform_qnx.c', 'Makefile', 'README.md', 'image.build.template']) {
     assert.ok(existsSync(join(harness, file)), 'missing ' + file);
   }
 });
