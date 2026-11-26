@@ -206,8 +206,9 @@ make qnx            # nto/x86_64   (make qnx-arm for aarch64le)
 ./scheduloscope-harness -d 5000 -o report.json
 ```
 
-The harness prints a table and writes JSON with worst-case, mean and per-task miss counts, plus
-the platform it ran on. The same sources build on a normal Linux host through the POSIX backend,
+`make qnx-arm` builds only the AArch64 executable; the shipped `image.build.template` is an x86_64
+boot-image template and has no matching AArch64 startup/driver lines. The harness prints a table and
+writes JSON with maximum, mean and per-task miss counts, plus the platform it ran on. The same sources build on a normal Linux host through the POSIX backend,
 which is how the generated code is regression-tested in CI.
 
 ## Architecture
@@ -230,18 +231,19 @@ harness can never drift apart.
 
 ## Verification
 
-Everything that can be checked on a host is checked on a host: 89 automated tests, a TypeScript
-build with `strict` and `noUncheckedIndexedAccess`, and a CI job that compiles the generated
-harness with `gcc -Wall -Wextra -Wundef -Werror`, runs it, and exercises its failure and teardown
-paths.
+Everything that can be checked on a host is checked on a host: 96 tests (92 run, 4
+QNX-preprocessing skips without `gcc`), a TypeScript build with `strict` and
+`noUncheckedIndexedAccess`, and a CI job that compiles the generated
+harness with `gcc -Wall -Wextra -Wundef -Werror`, runs it, and exercises its failure, RPC-chain and teardown
+paths under AddressSanitizer and UndefinedBehaviorSanitizer.
 
 | Area | Status |
 | --- | --- |
-| Parser, validator, units, API | 89 tests, passing |
+| Full test suite | 96 tests: 92 pass, 4 skip without `gcc`; 5/5 QNX preprocessing tests pass in the Linux container |
 | RTA against hand-computed cases | passing (see `tests/rta.test.ts`) |
 | Simulator semantics (PI, PCP, RR, sporadic, ISR) | passing |
 | Report and SVG generation | passing |
-| Generated C harness | compiles with `gcc -Wall -Wextra -Wundef -Werror`, runs under Linux, and fails cleanly when scheduling or a channel cannot be set up |
+| Generated C harness | compiles with `gcc -Wall -Wextra -Wundef -Werror`, runs under Linux, and stops cleanly on a partial startup, a failed stop/join, or an RPC chain |
 | QNX API usage | reviewed call by call against the 8.0 reference pages (`docs/verification.md`) |
 | Generated C harness on QNX 8.0 | **not executed here** - the SDP needs a myQNX account and license |
 
@@ -305,4 +307,3 @@ docs/          reference documentation
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
-

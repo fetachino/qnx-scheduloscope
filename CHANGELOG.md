@@ -57,6 +57,51 @@ reference pages, listed one by one in `docs/verification.md`.
   and the invalid-measurement path. CI also compiles the POSIX harness and its failure paths and
   runs the teardown under sanitizers (89 tests in total).
 
+## [1.0.2] - 2026-11-26
+
+A second critical-defect pass on the generated harness, the analysis semantics and the QNX image
+template. No QNX SDP was available, so QNX claims remain source/preprocessing review, not execution.
+
+### Fixed
+
+- The RPC-chain shutdown deadlock. Servers used a normal request as a wake-up, which could run a
+  handler that called another server after that server had stopped. Shutdown now sends a distinct
+  pulse/message (`0x5353`), `ss_channel_recv` reports it separately, and the server exits without
+  dispatching a handler or replying. Stop sends and joins are checked and bounded; if either fails,
+  channels, mutexes and the gate are deliberately not destroyed while a thread might still use them.
+- A start barrier: every task thread is created and arrives before timing starts, and one common
+  release sets `g_start_us`. A failure releases the gate and aborts without a report.
+- `image.build.template` now installs the QNX 8 loader `ldqnx-64.so.2` in `/proc/boot`, adds the
+  `/usr/lib/ldqnx-64.so.2` symlink the ELF interpreter needs, and copies `libgcc_s.so.1` (the old
+  template copied `libgcc_s.so`).
+- An aperiodic task with no explicit deadline now generates `deadlineUs = 0`; the harness and the
+  simulator do not count a miss against 0. An explicit positive aperiodic deadline is preserved and measured, but an
+  explicit zero is rejected instead of silently meaning none; response-time analysis still makes no
+  arrival-rate guarantee. Reports show `none` instead of
+  `0us`, and do not include a deadline-less task in the headline worst slack.
+- PCP ceilings now participate in the `PROCMGR_AID_PRIORITY` threshold. The QNX backend checks
+  `pthread_mutexattr_init`, `setprotocol`, `setprioceiling` and `pthread_mutex_init`, and fails
+  with an accurate ability/PCP diagnostic instead of running with a silently lower ceiling.
+- Skipped nominal releases are counted individually (`skipped`), not once per starvation episode.
+  The console and JSON expose started/completed/skipped/late, and `deadline_misses` is
+  `misses + skipped`; both are documented.
+- A normal task join is bounded by the measurement window plus a margin, so a long `-d` run is not
+  mistaken for a stuck thread. Shutdown still uses the short margin.
+- The QNX ability comment no longer claims the priority is clamped; the run aborts. The hint no
+  longer suggests changing `procnto -P`, which would not grant `PROCMGR_AID_PRIORITY`. POSIX channel mutex/condition-variable
+  initialization is checked and unwinds partial initialization; mutex attributes are destroyed on
+  every path; server/task join results are checked before any destruction.
+- `qnx-arm` is documented as an AArch64 executable build only: the image template is x86_64 and has
+  no matching AArch64 startup/driver lines.
+
+### Added
+
+- Regression coverage for the two- and three-service RPC chains, partial server startup, forced
+  stop-send failure, forced join failure, the delayed-start barrier, individual skipped releases, an
+  explicit aperiodic deadline, long measurement windows, and sanitized RPC-chain teardown.
+- `npm run check:c` now runs 52 checks with explicit child-process timeouts; `npm test` is 96 tests
+  (92 passing, 4 QNX preprocessing tests skipped without `gcc`; 5/5 pass in the Linux container).
+
 ## [1.0.0] - 2026-11-26
 
 First release, built for the QNX Everywhere Hackathon.
@@ -87,4 +132,3 @@ First release, built for the QNX Everywhere Hackathon.
 - Single-core only; SMP and the adaptive partition scheduler are out of scope for 1.0.0.
 - The QNX backend is build-ready but was not executed on QNX during this release; see
   `docs/verification.md`.
-

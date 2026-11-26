@@ -23,18 +23,18 @@ npm ci
 npm test        # tsc -p tsconfig.json && node scripts/test.mjs
 ```
 
-Result: **89 tests, 86 passing, 0 failing, 3 skipped**, about 2 seconds. The three skips are the QNX preprocessing tests, which need `gcc`; they run in CI and pass there.
+Result: **96 tests, 92 passing, 0 failing, 4 skipped**, about 3 seconds. The four skips are the QNX preprocessing tests, which need `gcc`; the same file passes in the Linux container described below (5/5).
 
 | File | Tests | Covers |
 | --- | --- | --- |
 | `tests/units.test.ts` | 6 | Duration parsing and formatting, gcd/lcm used for hyperperiods. |
-| `tests/parse.test.ts` | 15 | Every YAML construct, aliases, unknown-key rejection, activation rules. |
+| `tests/parse.test.ts` | 16 | Every YAML construct, aliases, unknown-key rejection, activation rules. |
 | `tests/validate.test.ts` | 14 | QNX priority rules, PCP ceilings, duplicate names, ISR saturation, self-suspension, sporadic budget and replenishment limits. |
 | `tests/rta.test.ts` | 9 | Hand-computed response times, inheritance vs no inheritance, interrupt terms, divergence. |
-| `tests/sim.test.ts` | 10 | Determinism, priority order, round robin, sporadic budget, fixed-priority channels, PI and no-PI inversion, example model. |
-| `tests/report.test.ts` | 6 | Summary numbers, Markdown and HTML structure, HTML escaping, diagnostics merging. |
-| `tests/codegen.test.ts` | 16 | Generated C contents, real tabs in the Makefile, `-Wundef`, `_NTO_CHF_FIXED_PRIORITY`, the priority ability, the image build file, unsupported segments, interrupt reporting, response-time definition, teardown order, no report on an invalid run. |
-| `tests/qnx-backend.test.ts` | 4 | Preprocesses the generated QNX source with stub headers: `PROCMGR_AID_PRIORITY` at priority 70, none at 60, no undefined `SS_` macro. |
+| `tests/sim.test.ts` | 11 | Determinism, priority order, round robin, sporadic budget, fixed-priority channels, PI and no-PI inversion, example model. |
+| `tests/report.test.ts` | 7 | Summary numbers, Markdown and HTML structure, HTML escaping, diagnostics merging, and an aperiodic task with no deadline rendered as `none`. |
+| `tests/codegen.test.ts` | 19 | Generated C contents, real tabs in the Makefile, `-Wundef`, `_NTO_CHF_FIXED_PRIORITY`, the priority ability, PCP ceilings, the loader/link in the image build file, the start gate and stop protocol, unsupported segments, interrupt reporting, response-time definition, teardown order, no report on an invalid run. |
+| `tests/qnx-backend.test.ts` | 5 | Preprocesses the generated QNX source with stub headers: `PROCMGR_AID_PRIORITY` at priority 70, at a PCP ceiling of 70, none at 60, no undefined `SS_` macro. |
 | `tests/cli.test.ts` | 8 | Exit codes 0/1/2, `--json`, `gen`, `init --force`, missing file handling. |
 | `tests/api.test.ts` | 1 | The whole pipeline through the public entry point. |
 
@@ -95,17 +95,17 @@ runs clean, and it writes this report:
   "model_includes_interrupts": true,
   "interrupts_reproduced": false,
   "tasks": [
-    {"name": "control", "activations": 1483, "completed": 1483, "min_us": 540, "mean_us": 727.3, "max_us": 7939, "max_activation_latency_us": 7439, "mean_activation_latency_us": 218.1, "misses": 14, "skipped": 14},
-    {"name": "sensor", "activations": 1482, "completed": 1482, "min_us": 523, "mean_us": 729.5, "max_us": 7416, "max_activation_latency_us": 6916, "mean_activation_latency_us": 219.4, "misses": 3, "skipped": 14},
-    {"name": "logger", "activations": 300, "completed": 300, "min_us": 437, "mean_us": 627.4, "max_us": 2986, "max_activation_latency_us": 2586, "mean_activation_latency_us": 226.6, "misses": 0, "skipped": 0}
+    {"name": "control", "activations": 1476, "completed": 1476, "min_us": 530, "mean_us": 699.0, "max_us": 14076, "max_activation_latency_us": 13575, "mean_activation_latency_us": 193.7, "misses": 12, "skipped": 24, "deadline_misses": 36},
+    {"name": "sensor", "activations": 1474, "completed": 1474, "min_us": 549, "mean_us": 705.3, "max_us": 13953, "max_activation_latency_us": 8643, "mean_activation_latency_us": 187.2, "misses": 5, "skipped": 26, "deadline_misses": 31},
+    {"name": "logger", "activations": 300, "completed": 300, "min_us": 461, "mean_us": 613.0, "max_us": 5432, "max_activation_latency_us": 5032, "mean_activation_latency_us": 210.7, "misses": 0, "skipped": 0, "deadline_misses": 0}
   ]
 }
 ```
 
 The misses in that run are the point of the whole exercise. Inside the container the harness cannot
 raise its threads to real-time priorities, so the report says `"scheduling": "best-effort"` and a
-control job is descheduled by whatever else the host is doing: one takes 7.9 ms against a 1 ms
-budget, and 7.4 ms of that is activation latency before it ran at all. The same code on QNX runs
+control job is descheduled by whatever else the host is doing: one takes 14.1 ms against a 1 ms
+budget, and 13.6 ms of that is activation latency before it ran at all. The same code on QNX runs
 at priority 60 with `SCHED_FIFO`, where that interference is bounded by the priorities. A host run
 measures the C, not the system, which is exactly why the JSON carries `"platform": "posix"` and
 `"scheduling": "best-effort"`.
@@ -123,12 +123,61 @@ the modelled segments, joins its server threads, destroys what it created and wr
 report. It does not prove anything about QNX latency, and the numbers above should not be read as
 a real-time measurement.
 
-The same code is checked on its failure paths by `npm run check:c` (27 checks), which CI runs on every push.
+`npm run check:c` now runs **52 checks** against the generated C on Linux. Besides the normal run it
+covers two- and three-service RPC chains, where stopping a frontend whose stop message would have
+run a handler that calls the already-stopped backend used to deadlock; partial server startup; an
+injected stop-send failure; an injected join failure; a measurement window longer than the join
+margin; the startup gate (task 1 created 200 ms late must not steal task 0's window); per-release
+skipped counting; and an explicit aperiodic deadline. Every child process has an explicit timeout, so a reintroduced hang fails the check
+instead of stalling CI.
+
 With `-DSS_FORCE_SCHED_FAILURE` a thread cannot be configured: the harness must exit 1 and write no
 report, rather than measure a different system. With `-DSS_FORCE_CHANNEL_FAILURE` it must fail
-during partial initialization and still tear down what it created; that path is also compiled with
-`-fsanitize=address,undefined` and must report no leak or memory error. These are host checks of
-the C, not QNX execution.
+during partial initialization and still tear down what it created. The partial-initialization path
+and a normal three-service RPC-chain teardown are compiled with
+`-fsanitize=address,undefined`; both runs report no leak, memory error or undefined behaviour.
+These are host checks of the C, not QNX execution. Under Docker's default capability set,
+LeakSanitizer needs `CAP_SYS_PTRACE` to inspect the finished process; add
+`--cap-add=SYS_PTRACE` to the container. Without it, ASan can abort with repeated `AddressSanitizer:DEADLYSIGNAL`
+even though the same binary passes natively, so that mode is not treated as a pass.
+
+```bash
+docker run --rm --cap-add=SYS_PTRACE -v "$PWD:/w" -w /w node:22-bookworm sh -c \
+  "apt-get update -qq && apt-get install -y -qq gcc libc6-dev && node scripts/c-harness-check.mjs"
+```
+
+### Shutdown and startup protocol
+
+A server is blocked in receive, so a flag cannot wake it. The harness sends an explicit stop
+pulse/message whose code is outside the request protocol; `ss_channel_recv` returns `1` for it and
+the server exits before dispatching a handler or replying. This is what removes the deterministic
+chain deadlock: stopping the frontend first can no longer leave it waiting for a backend that has
+already been stopped, and a frontend that is inside a backend call finishes that call before it sees
+the stop.
+
+Task threads arrive at a gate after they exist and before timing starts. `main` waits for every
+arrival, sets `g_start_us`, then releases all of them together. A gate timeout or any thread start
+failure releases the gate, writes no report and tears down only what was fully created. Normal task
+joins are bounded by the measurement window plus 2 s; shutdown joins use 2 s. A failed stop send or a
+task/server join failure leaves channels, mutexes and the gate alive and says so, because a thread
+may still be using them. `ss_shutdown()` is always the last call.
+
+### Loader in `image.build.template`
+
+QNX 8's ELF interpreter is `/usr/lib/ldqnx-64.so.2`. The loader is a separate shared object from
+`libc.so` in QNX 8. The template copies the target loader to `/proc/boot/ldqnx-64.so.2` and creates
+the interpreter path with:
+
+```
+[type=link] /usr/lib/ldqnx-64.so.2=/proc/boot/ldqnx-64.so.2
+```
+
+It also copies `libc.so` and `libgcc_s.so.1`. The official [shared libraries](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.building/topic/config/shared_libraries.html)
+page gives the equivalent buildfile snippet `libc.so`, `libgcc_s.so.1`,
+`/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2`; the [system buildfile sample](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.building/topic/buildfiles/buildfile_structure.html)
+uses `procmgr_symlink ../../proc/boot/ldqnx-64.so.2 /usr/lib/ldqnx-64.so.2` in its startup script.
+The template was **not** run through `mkifs` here: without the SDP its exact output cannot be
+verified, so it remains labelled unbuilt.
 
 ## QNX API review against the 8.0 documentation
 
@@ -140,17 +189,18 @@ is recorded as such. Each row names the page it was checked against.
 | --- | --- | --- |
 | [`pthread_attr_setschedpolicy`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_attr_setschedpolicy.html) | `SCHED_FIFO`, `SCHED_RR`, `SCHED_SPORADIC` per task, with `PTHREAD_EXPLICIT_SCHED`. | Correct. The RR timeslice is left at the kernel default of four clock periods; the model assumes the same 4 ms. |
 | [`sched_param`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/s/sched_param.html) | `sched_ss_init_budget`, `sched_ss_repl_period`, `sched_ss_low_priority`, `sched_ss_max_repl`. | Correct field names. `pthread_attr_setschedparam` returns `EINVAL` only when the period is *shorter* than the budget, so equality is legal; the validator was changed to accept it. |
-| [`pthread_mutexattr_setprotocol`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_mutexattr_setprotocol.html) | `PTHREAD_PRIO_INHERIT` or `PTHREAD_PRIO_PROTECT` plus `pthread_mutexattr_setprioceiling`. | Correct, and the QNX default is `PTHREAD_PRIO_INHERIT`, which is why `protocol` defaults to `inherit` in the model. |
+| [`pthread_mutexattr_setprotocol`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_mutexattr_setprotocol.html) / [`pthread_mutexattr_setprioceiling`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_mutexattr_setprioceiling.html) | `PTHREAD_PRIO_INHERIT` or `PTHREAD_PRIO_PROTECT` plus `pthread_mutexattr_setprioceiling`. Every attribute call and `pthread_mutex_init` is checked, and a `protect` mutex's ceiling is read back with `pthread_mutex_getprioceiling` and compared; a failure or mismatch stops the run with the ability/PCP diagnostic instead of using a lower ceiling. | Correct, and the QNX default is `PTHREAD_PRIO_INHERIT`, which is why `protocol` defaults to `inherit` in the model. The workload's ability threshold includes `protect` ceilings, not only task priorities. |
+| [`MsgSendPulse`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/m/msgsendpulse.html) / `pthread_timedjoin` | Shutdown sends a pulse with code `0x5353` at priority `-1` (inherit the sender), and joins server threads with `pthread_timedjoin`. The POSIX host uses `pthread_timedjoin_np` with an absolute `CLOCK_REALTIME` deadline. | Correct. The pulse is not a normal request: `MsgReceive` identifies it as `struct _pulse`, the server exits without running the handler or replying, and the join is bounded. |
 | [`ChannelCreate`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/channelcreate.html) / [`ConnectAttach`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/connectattach.html) | One channel per modelled server, side-channel connection, `_NTO_CHF_FIXED_PRIORITY` when the model asks for it. | Correct. `_NTO_CHF_FIXED_PRIORITY` turns off message-driven inheritance, which is what the model means by `fixedPriority: true`. |
 | [`MsgSend`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/m/msgsend.html) / `MsgReceive` / `MsgReply` | Client sends, server thread receives and replies. | Corrected: `MsgSend` now passes a 64-byte reply buffer, because the server does reply and a client that passes `NULL, 0` cannot receive it. |
 | [`ChannelDestroy`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/channeldestroy.html) | Both error paths and the shutdown path destroy the channel. | Corrected earlier from `ConnectDetach`, which detaches the connection, not the channel. |
 | [`ClockCycles`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/clockcycles.html) | Start and end timestamps, normalised with `cycles_per_sec` from `SYSPAGE_ENTRY(qtime)`. | Correct; cycle counts are the right clock for sub-microsecond jobs. |
-| [`procmgr_ability`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/procmgr_ability.html) | Asks for `PROCMGR_AID_PRIORITY` when the workload needs a priority above 63. | Corrected. The check read an undefined macro and was silently compiled out; it now reads `SS_MAX_PRIORITY` from the generated `workload_config.h`. Without the ability `pthread_attr_setschedparam` fails for the safety thread at 70, and the harness now stops with an explanation instead of running at a clamped priority. |
-| [`mkifs`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mkifs.html) | `image.build.template`: `[virtual=x86_64,elf]`, `startup-x86_64`, `procnto-smp-instr -P 63`, a writable `/tmp`, and a copy section with the harness plus `libc.so` and `libgcc_s.so`. | Corrected the startup name (it is `startup-x86_64`, not `startup-x86-64`), matched the dynamic link the Makefile produces, and gave the harness a directory it can write the report to. Not built or booted here. |
+| [`procmgr_ability`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/procmgr_ability.html) | Asks for `PROCMGR_AID_PRIORITY` when a task priority or a `protect` mutex ceiling exceeds the `SS_PRIVILEGED_CEILING` generated from the model (63 by default). | Corrected. The check read an undefined macro and was silently compiled out; it now reads `SS_MAX_PRIORITY` from the generated `workload_config.h`. Without the ability `pthread_attr_setschedparam` or `pthread_mutexattr_setprioceiling` fails, and the harness stops with an explanation. The message points to root or to granting `PROCMGR_AID_PRIORITY`, not to changing `procnto -P`. |
+| [`mkifs`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mkifs.html) | `image.build.template`: `[virtual=x86_64,elf]`, `startup-x86_64`, `procnto-smp-instr -P 63`, a writable `/tmp`, and a copy section with the harness, `ldqnx-64.so.2`, `libc.so` and `libgcc_s.so.1`; `[type=link] /usr/lib/ldqnx-64.so.2=/proc/boot/ldqnx-64.so.2` supplies the ELF interpreter path. | Corrected the startup name (it is `startup-x86_64`, not `startup-x86-64`), matched the QNX 8 dynamic loader and its `/usr/lib/ldqnx-64.so.2` symlink, matched the dynamic link the Makefile produces, and gave the harness a directory it can write the report to. Not built or booted here. |
 
 The QNX source is also preprocessed in CI against stub headers with `-Wundef -Werror`
 (`tests/qnx-backend.test.ts`). That catches exactly the defect above, an `SS_` macro a source
-forgot to include, and checks that the ability request appears at priority 70 and not at 60. It
+forgot to include, and checks that the ability request appears at task priority 70, at a PCP ceiling of 70, and not at 60; a task at 20 with a ceiling of 70 is covered by the unit and codegen tests. It
 does not type-check the QNX calls; that still needs `qcc`.
 
 Two model-level facts came out of the same review. The QNX SDP 8.x priority range for application
@@ -165,7 +215,7 @@ informational note that says so.
 | --- | --- | --- |
 | QNX-specific C backend (`platform_qnx.c`) | **written, not executed** | Needs the QNX SDP 8.0 C library and headers. |
 | `Makefile` targets `qnx` (x86_64) and `qnx-arm` (aarch64le) | **not executed** | Same. |
-| `image.build.template` for a bootable QNX image | **not executed** | `mkifs` ships with the SDP. |
+| `image.build.template` for a bootable QNX image | **not executed** | `mkifs` ships with the SDP. The template is x86_64 only; `qnx-arm` builds an AArch64 executable but has no matching image template. |
 | Analysis and simulation of QNX semantics | executed on the host | They are models of the OS, not the OS itself. |
 
 ### Obtaining the SDP: what was tried

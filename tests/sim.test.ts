@@ -42,6 +42,22 @@ test('a one-millisecond control loop is never late on an idle CPU', () => {
   assert.ok(fast.maxResponseUs <= 1000);
 });
 
+test('an aperiodic task with no deadline cannot miss one, but an explicit deadline is enforced', () => {
+  const source = (deadline: string) => TWO_TASKS + [
+    '  - name: events',
+    '    priority: 10',
+    '    meanInterarrival: 1ms',
+    deadline,
+    '    segments:',
+    '      - cpu: 5ms',
+    '',
+  ].filter((line) => line !== '').join('\n');
+  const noDeadline = run(source(''), 20_000);
+  assert.equal(noDeadline.deadlineMisses.filter((miss) => miss.task === 'events').length, 0);
+  const explicit = run(source('    deadline: 100us'), 20_000);
+  assert.ok(explicit.deadlineMisses.some((miss) => miss.task === 'events'), 'the explicit deadline is measured');
+});
+
 test('priority inheritance bounds the inversion a low-priority lock can cause', () => {
   const template = (protocol: string) => `schema: scheduloscope/v1
 name: ${protocol}

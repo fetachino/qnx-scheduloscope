@@ -148,27 +148,170 @@ int ss_thread_start(ss_thread *t, const char *name, int priority, int policy,
 }
 
 int ss_thread_join(ss_thread *t) {
-    if (!t->started) return -1;
-    return pthread_join((pthread_t)t->handle, NULL) == 0 ? 0 : -1;
+    if (!t || !t->started) return -1;
+    int rc = pthread_join((pthread_t)t->handle, NULL);
+    if (rc == 0) t->started = 0;
+    return rc == 0 ? 0 : -1;
+}
+
+int ss_thread_join_timeout(ss_thread *t, uint64_t timeout_ms) {
+    if (!t || !t->started) return -1;
+#ifdef SS_FORCE_JOIN_FAILURE
+    return -1;
+#endif
+    struct timespec deadline;
+    if (clock_gettime(CLOCK_REALTIME, &deadline) != 0) return -1;
+    deadline.tv_sec += (time_t)(timeout_ms / 1000ull);
+    deadline.tv_nsec += (long)((timeout_ms % 1000ull) * 1000000ull);
+    if (deadline.tv_nsec >= 1000000000L) {
+        deadline.tv_sec++;
+        deadline.tv_nsec -= 1000000000L;
+    }
+    int rc = pthread_timedjoin_np((pthread_t)t->handle, NULL, &deadline);
+    if (rc == 0) {
+        t->started = 0;
+        return 0;
+    }
+    return rc == ETIMEDOUT ? SS_JOIN_TIMEOUT : -1;
+}
+
+/* ---- start gate ------------------------------------------------------ */
+
+typedef struct {
+    pthread_mutex_t mu;
+    pthread_cond_t cv;
+    int waiters;
+    int arrived;
+    int released;
+} gate_impl;
+
+int ss_gate_init(ss_gate *g, int waiters) {
+    if (!g || waiters < 0) return -1;
+    gate_impl *impl = (gate_impl *)calloc(1, sizeof(*impl));
+    if (!impl) return -1;
+    int rc = pthread_mutex_init(&impl->mu, NULL);
+    if (rc != 0) {
+        free(impl);
+        return -1;
+    }
+    rc = pthread_cond_init(&impl->cv, NULL);
+    if (rc != 0) {
+        pthread_mutex_destroy(&impl->mu);
+        free(impl);
+        return -1;
+    }
+    impl->waiters = waiters;
+    g->impl = impl;
+    return 0;
+}
+
+int ss_gate_arrive(ss_gate *g) {
+    gate_impl *impl = g ? (gate_impl *)g->impl : NULL;
+    if (!impl) return -1;
+    int rc = pthread_mutex_lock(&impl->mu);
+    if (rc != 0) return -1;
+    impl->arrived++;
+    pthread_cond_broadcast(&impl->cv);
+    while (!impl->released) {
+        rc = pthread_cond_wait(&impl->cv, &impl->mu);
+        if (rc != 0) {
+            pthread_mutex_unlock(&impl->mu);
+            return -1;
+        }
+    }
+    pthread_mutex_unlock(&impl->mu);
+    return 0;
+}
+
+int ss_gate_wait_ready(ss_gate *g, uint64_t timeout_ms) {
+    gate_impl *impl = g ? (gate_impl *)g->impl : NULL;
+    if (!impl) return -1;
+    struct timespec deadline;
+    if (clock_gettime(CLOCK_REALTIME, &deadline) != 0) return -1;
+    deadline.tv_sec += (time_t)(timeout_ms / 1000ull);
+    deadline.tv_nsec += (long)((timeout_ms % 1000ull) * 1000000ull);
+    if (deadline.tv_nsec >= 1000000000L) {
+        deadline.tv_sec++;
+        deadline.tv_nsec -= 1000000000L;
+    }
+    if (pthread_mutex_lock(&impl->mu) != 0) return -1;
+    int result = 0;
+    while (impl->arrived < impl->waiters && !impl->released) {
+        int rc = pthread_cond_timedwait(&impl->cv, &impl->mu, &deadline);
+        if (rc == ETIMEDOUT) {
+            result = SS_JOIN_TIMEOUT;
+            break;
+        }
+        if (rc != 0) {
+            result = -1;
+            break;
+        }
+    }
+    if (impl->released && impl->arrived < impl->waiters) result = -1;
+    pthread_mutex_unlock(&impl->mu);
+    return result;
+}
+
+int ss_gate_release(ss_gate *g) {
+    gate_impl *impl = g ? (gate_impl *)g->impl : NULL;
+    if (!impl) return -1;
+    if (pthread_mutex_lock(&impl->mu) != 0) return -1;
+    impl->released = 1;
+    pthread_cond_broadcast(&impl->cv);
+    pthread_mutex_unlock(&impl->mu);
+    return 0;
+}
+
+void ss_gate_destroy(ss_gate *g) {
+    gate_impl *impl = g ? (gate_impl *)g->impl : NULL;
+    if (!impl) return;
+    pthread_cond_destroy(&impl->cv);
+    pthread_mutex_destroy(&impl->mu);
+    free(impl);
+    g->impl = NULL;
 }
 
 int ss_mutex_init(ss_mutex *m, int protocol, int ceiling) {
     pthread_mutexattr_t attr;
-    pthread_mutexattr_init(&attr);
+    int rc = pthread_mutexattr_init(&attr);
+    if (rc != 0) {
+        fprintf(stderr, "[scheduloscope] pthread_mutexattr_init failed: %s\n", strerror(rc));
+        return -1;
+    }
     if (protocol == SS_PROTO_INHERIT) {
-        pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT);
+        rc = pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT);
     } else if (protocol == SS_PROTO_PROTECT) {
-        pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_PROTECT);
-        pthread_mutexattr_setprioceiling(&attr, ceiling);
+        rc = pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_PROTECT);
+        if (rc == 0) rc = pthread_mutexattr_setprioceiling(&attr, ceiling);
+    }
+    if (rc != 0) {
+        /* The host may lack CAP_SYS_NICE. Say so, mark the run best-effort,
+         * and rebuild the attribute without the unsupported protocol rather
+         * than running with an unnoticed different mutex. */
+        fprintf(stderr,
+                "[scheduloscope] host cannot configure mutex protocol %d ceiling %d (%s); "
+                "continuing best-effort without that protocol\n",
+                protocol, ceiling, strerror(rc));
+        g_scheduling_enforced = 0;
+        pthread_mutexattr_destroy(&attr);
+        rc = pthread_mutexattr_init(&attr);
+        if (rc != 0) {
+            fprintf(stderr, "[scheduloscope] pthread_mutexattr_init(retry) failed: %s\n", strerror(rc));
+            return -1;
+        }
     }
     pthread_mutex_t *mutex = (pthread_mutex_t *)malloc(sizeof(*mutex));
-    if (!mutex) return -1;
-    if (pthread_mutex_init(mutex, &attr) != 0) {
+    if (!mutex) {
         pthread_mutexattr_destroy(&attr);
+        return -1;
+    }
+    rc = pthread_mutex_init(mutex, &attr);
+    pthread_mutexattr_destroy(&attr);
+    if (rc != 0) {
+        fprintf(stderr, "[scheduloscope] pthread_mutex_init failed: %s\n", strerror(rc));
         free(mutex);
         return -1;
     }
-    pthread_mutexattr_destroy(&attr);
     m->impl = mutex;
     return 0;
 }
@@ -207,6 +350,7 @@ typedef struct {
     int head;
     int tail;
     int count;
+    int stop_pending;
     int queue[SS_MAX_PENDING];
     reply_slot slots[SS_MAX_PENDING];
 } channel_impl;
@@ -220,10 +364,35 @@ int ss_channel_create(ss_channel *c, int fixed_priority) {
 #endif
     channel_impl *impl = (channel_impl *)calloc(1, sizeof(*impl));
     if (!impl) return -1;
-    pthread_mutex_init(&impl->mu, NULL);
-    pthread_cond_init(&impl->available, NULL);
+    int rc = pthread_mutex_init(&impl->mu, NULL);
+    if (rc != 0) {
+        fprintf(stderr, "[scheduloscope] channel mutex init failed: %s\n", strerror(rc));
+        free(impl);
+        return -1;
+    }
+    rc = pthread_cond_init(&impl->available, NULL);
+    if (rc != 0) {
+        fprintf(stderr, "[scheduloscope] channel condition init failed: %s\n", strerror(rc));
+        pthread_mutex_destroy(&impl->mu);
+        free(impl);
+        return -1;
+    }
+    int initialized = 0;
+    for (; initialized < SS_MAX_PENDING; initialized++) {
+        rc = pthread_cond_init(&impl->slots[initialized].cv, NULL);
+        if (rc != 0) {
+            fprintf(stderr, "[scheduloscope] channel reply condition init failed: %s\n", strerror(rc));
+            break;
+        }
+    }
+    if (rc != 0) {
+        while (initialized > 0) pthread_cond_destroy(&impl->slots[--initialized].cv);
+        pthread_cond_destroy(&impl->available);
+        pthread_mutex_destroy(&impl->mu);
+        free(impl);
+        return -1;
+    }
     impl->fixed_priority = fixed_priority;
-    for (int i = 0; i < SS_MAX_PENDING; i++) pthread_cond_init(&impl->slots[i].cv, NULL);
     c->impl = impl;
     return 0;
 }
@@ -244,7 +413,17 @@ int ss_channel_recv(ss_channel *c, void *buf, size_t len, int *client) {
     channel_impl *impl = (channel_impl *)c->impl;
     if (!impl) return -1;
     pthread_mutex_lock(&impl->mu);
-    while (impl->count == 0) pthread_cond_wait(&impl->available, &impl->mu);
+    while (impl->count == 0 && impl->stop_pending == 0) {
+        if (pthread_cond_wait(&impl->available, &impl->mu) != 0) {
+            pthread_mutex_unlock(&impl->mu);
+            return -1;
+        }
+    }
+    if (impl->stop_pending > 0) {
+        impl->stop_pending--;
+        pthread_mutex_unlock(&impl->mu);
+        return 1;
+    }
     int slot = impl->queue[impl->head];
     impl->head = (impl->head + 1) % SS_MAX_PENDING;
     impl->count--;
@@ -289,6 +468,18 @@ int ss_channel_send(ss_channel *c, const void *buf, size_t len) {
     pthread_cond_signal(&impl->available);
     while (impl->slots[slot].state == 1) pthread_cond_wait(&impl->slots[slot].cv, &impl->mu);
     impl->slots[slot].state = 0;
+    pthread_mutex_unlock(&impl->mu);
+    return 0;
+}
+int ss_channel_send_stop(ss_channel *c) {
+    channel_impl *impl = (channel_impl *)c->impl;
+    if (!impl) return -1;
+#ifdef SS_FORCE_STOP_FAILURE
+    return -1;
+#endif
+    pthread_mutex_lock(&impl->mu);
+    impl->stop_pending++;
+    pthread_cond_signal(&impl->available);
     pthread_mutex_unlock(&impl->mu);
     return 0;
 }

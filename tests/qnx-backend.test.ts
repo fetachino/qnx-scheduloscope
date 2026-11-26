@@ -45,6 +45,14 @@ test('a priority above the unprivileged ceiling asks for PROCMGR_AID_PRIORITY', 
   assert.match(run.output, /procmgr_ability\(0,/);
 });
 
+test('a PCP ceiling above the ceiling asks for PROCMGR_AID_PRIORITY even with low task priorities', { skip: !HAS_GCC }, () => {
+  const source = TWO_TASKS.replace('  - name: fast\n    priority: 60', '  - name: fast\n    priority: 20')
+    + ['resources:', '  - name: lock', '    protocol: protect', '    ceiling: 70', ''].join('\n');
+  const run = preprocess(loadStrict(source), 'platform_qnx.c');
+  assert.equal(run.status, 0, run.output.slice(0, 4000));
+  assert.match(run.output, /procmgr_ability\(0,/);
+});
+
 test('a workload that stays under the ceiling does not request the priority ability', { skip: !HAS_GCC }, () => {
   const run = preprocess(loadStrict(TWO_TASKS), 'platform_qnx.c');
   assert.equal(run.status, 0, run.output.slice(0, 4000));

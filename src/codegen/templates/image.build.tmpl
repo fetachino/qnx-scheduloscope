@@ -6,8 +6,9 @@
 #
 # This is a starting point, not a tested boot image: it was not built in the
 # environment where Scheduloscope was developed (no QNX SDP licence available).
-# The harness is dynamically linked, so libc.so and libgcc_s.so are copied next
-# to it; build with `qcc -static` instead if you prefer a single static binary.
+# The harness is dynamically linked. QNX 8 images need libc.so, libgcc_s.so.1
+# and the dynamic loader ldqnx-64.so.2; the loader must be reachable at the
+# absolute path /usr/lib/ldqnx-64.so.2 recorded as the ELF interpreter.
 
 [virtual=x86_64,elf] .bootstrap = {
     startup-x86_64 -v
@@ -27,8 +28,10 @@
 
 [data=copy] /proc/boot = {
     scheduloscope-harness
+    $QNX_TARGET/x86_64/lib/ldqnx-64.so.2
     $QNX_TARGET/x86_64/lib/libc.so
-    $QNX_TARGET/x86_64/lib/libgcc_s.so
+    $QNX_TARGET/x86_64/lib/libgcc_s.so.1
 }
+[type=link] /usr/lib/ldqnx-64.so.2=/proc/boot/ldqnx-64.so.2
 
 # System: {{SYSTEM_NAME}}

@@ -109,7 +109,7 @@ export interface TaskModel {
   readonly policy: SchedulingPolicy;
   readonly sporadic?: SporadicModel;
   readonly activation: Activation;
-  /** Relative deadline. Defaults to the period (or min interarrival). */
+  /** Relative deadline. Defaults to period/min interarrival; 0 means an aperiodic task has none. */
   readonly deadlineUs: Micros;
   readonly segments: readonly Segment[];
   /** Free-form note shown in reports. */

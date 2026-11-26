@@ -859,7 +859,8 @@ class Simulator {
       if (list) list.push(response);
       this.cpuByTask.set(thread.name, (this.cpuByTask.get(thread.name) ?? 0) + job.cpuUs);
       this.events.push({ t: this.now, type: 'complete', thread: thread.name, detail: 'response ' + String(Math.round(response)) + 'us' });
-      if (response > job.deadlineRel + EPSILON) {
+      /* deadlineRel 0 means "no deadline" (an aperiodic task); it is not late. */
+      if (job.deadlineRel > 0 && response > job.deadlineRel + EPSILON) {
         this.events.push({
           t: this.now,
           type: 'deadline-miss',

@@ -38,7 +38,9 @@ export interface ReportSummary {
 
 export function summarize(bundle: ReportBundle): ReportSummary {
   const diagnostics = allDiagnostics(bundle);
-  const slack = bundle.rta.tasks.map((task) => task.slackUs);
+  // Aperiodic tasks have no deadline to compare against, so their slack is not
+  // a meaningful "worst" for the report header.
+  const slack = bundle.rta.tasks.filter((task) => task.deadlineMet !== null).map((task) => task.slackUs);
   return {
     verdict: bundle.rta.verdict,
     tasks: bundle.model.tasks.length,
@@ -100,7 +102,7 @@ export function renderMarkdown(bundle: ReportBundle): string {
     const cost = derived.costs.get(task.name);
     lines.push('| ' + task.name + ' | ' + task.policy + ' | ' + String(task.priority) + ' | ' +
       formatDuration(taskPeriodUs(task)) + ' | ' + formatDuration(cost?.executionUs ?? 0) + ' | ' +
-      formatDuration(task.deadlineUs) + ' | ' + (sharedWith(task) || '—') + ' |');
+      deadlineText(task.deadlineUs) + ' | ' + (sharedWith(task) || '—') + ' |');
   }
   lines.push('');
   lines.push('## Response-time analysis');
@@ -110,7 +112,7 @@ export function renderMarkdown(bundle: ReportBundle): string {
   for (const task of rta.tasks) {
     lines.push('| ' + task.name + ' | ' + formatDuration(task.executionUs) + ' | ' + formatDuration(task.blockingUs) + ' | ' +
       formatDuration(task.interferenceUs) + ' | ' + formatDuration(task.interruptUs) + ' | ' + formatDuration(task.responseUs) + ' | ' +
-      formatDuration(task.deadlineUs) + ' | ' + formatDuration(task.slackUs) + ' | ' + verdictCell(task) + ' |');
+      deadlineText(task.deadlineUs) + ' | ' + slackText(task.slackUs, task.deadlineUs) + ' | ' + verdictCell(task) + ' |');
   }
   lines.push('');
   const blocking = rta.tasks.filter((task) => task.blocking.length > 0);
@@ -208,7 +210,7 @@ export function renderHtml(bundle: ReportBundle): string {
     model.tasks.map((task) => {
       const cost = derived.costs.get(task.name);
       return [task.name, task.policy, String(task.priority), formatDuration(taskPeriodUs(task)),
-        formatDuration(cost?.executionUs ?? 0), formatDuration(task.deadlineUs), sharedWith(task) || '—'];
+        formatDuration(cost?.executionUs ?? 0), deadlineText(task.deadlineUs), sharedWith(task) || '—'];
     }),
     ['', '', 'num', 'num', 'num', 'num', ''],
   ) + '</section>');
@@ -219,7 +221,7 @@ export function renderHtml(bundle: ReportBundle): string {
     ['Task', 'C', 'B', 'I', 'ISR', 'R', 'D', 'Slack', 'Result'],
     rta.tasks.map((task) => [task.name, formatDuration(task.executionUs), formatDuration(task.blockingUs),
       formatDuration(task.interferenceUs), formatDuration(task.interruptUs), formatDuration(task.responseUs),
-      formatDuration(task.deadlineUs), formatDuration(task.slackUs), verdictCell(task)]),
+      deadlineText(task.deadlineUs), slackText(task.slackUs, task.deadlineUs), verdictCell(task)]),
     ['', 'num', 'num', 'num', 'num', 'num', 'num', 'num', ''],
   ));
   const blocking = rta.tasks.filter((task) => task.blocking.length > 0);
@@ -350,6 +352,15 @@ function table(headers: readonly string[], rows: readonly (readonly string[])[],
 function verdictCell(task: TaskRta): string {
   if (task.deadlineMet === null) return 'n/a';
   return task.deadlineMet ? 'met' : 'missed';
+}
+
+/** A zero relative deadline means the aperiodic task has none. */
+function deadlineText(us: Micros): string {
+  return us > 0 ? formatDuration(us) : 'none';
+}
+
+function slackText(us: Micros, deadline: Micros): string {
+  return deadline > 0 ? formatDuration(us) : '—';
 }
 
 export function percent(value: number): string {

@@ -2,7 +2,7 @@
 
 > Field-oriented motor control with a safety supervisor, a trajectory planner, a sensor service thread and best-effort telemetry. Priorities reflect a hand-tuned QNX design, not a rate-monotonic assignment.
 
-Generated 2026-11-26T21:27:52Z by Scheduloscope 1.0.1.
+Generated 2026-11-26T22:16:49Z by Scheduloscope 1.0.2.
 
 ## Verdict
 
@@ -66,6 +66,6 @@ Simulated 20ms: 37 jobs completed, 0 deadline misses, 1 priority inversions, 88 
 - A server inherits the priority of the client it is serving and keeps it after MsgReply, as QNX documents.
 - Interrupt service threads preempt every application thread; the clock IST runs at 254 and the IPI IST at 255.
 - Clock period 1ms, round-robin timeslice 4 ticks, context switch 2us.
-- Aperiodic task: no deadline guarantee is computed.
+- Aperiodic task: its explicit deadline is reported, but no arrival-rate or deadline guarantee is computed.
 
 _Response-time bounds are analytical worst cases. The simulation is one deterministic schedule of the same model; a simulated latency above its bound is a modelling bug, not a nicer number._

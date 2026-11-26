@@ -36,6 +36,20 @@ test('resource protocol defaults to PTHREAD_PRIO_INHERIT', () => {
   assert.equal(model.resources[0]!.protocol, 'inherit');
 });
 
+test('an aperiodic task without a deadline gets deadline 0, and an explicit one is preserved', () => {
+  const noDeadline = parseStrict(MINIMAL
+    .replace('    period: 1ms\n    deadline: 1ms', '    meanInterarrival: 15ms'));
+  assert.equal(noDeadline.tasks[0]!.activation.type, 'aperiodic');
+  assert.equal(noDeadline.tasks[0]!.deadlineUs, 0, 'no deadline means zero, not the mean interarrival');
+  const explicit = parseStrict(MINIMAL
+    .replace('    period: 1ms\n    deadline: 1ms', '    meanInterarrival: 15ms\n    deadline: 50ms'));
+  assert.equal(explicit.tasks[0]!.deadlineUs, 50_000, 'an explicit observational deadline is preserved');
+  const zero = parseModel(MINIMAL
+    .replace('    period: 1ms\n    deadline: 1ms', '    meanInterarrival: 15ms\n    deadline: 0us'));
+  const diagnostic = requireCode(zero.diagnostics, 'E_RANGE');
+  assert.match(diagnostic.message, /at least 1us/, 'an explicit zero is rejected rather than silently meaning none');
+});
+
 test('reports an unknown key with a suggestion', () => {
   const parsed = parseModel(MINIMAL.replace('priority: 50', 'priorty: 50'));
   const diagnostic = requireCode(parsed.diagnostics, 'E_UNKNOWN_KEY');

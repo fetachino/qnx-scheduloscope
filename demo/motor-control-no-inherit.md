@@ -2,7 +2,7 @@
 
 > The motor-control design with PTHREAD_PRIO_NONE on stateLock: no priority inheritance, so a low-priority holder can be preempted while a safety thread waits. Used to show what the analysis refuses to bound and what the schedule actually does.
 
-Generated 2026-11-26T21:27:53Z by Scheduloscope 1.0.1.
+Generated 2026-11-26T22:16:50Z by Scheduloscope 1.0.2.
 
 ## Verdict
 
@@ -68,6 +68,6 @@ Simulated 20ms: 37 jobs completed, 0 deadline misses, 2 priority inversions, 89 
 - Interrupt service threads preempt every application thread; the clock IST runs at 254 and the IPI IST at 255.
 - Clock period 1ms, round-robin timeslice 4 ticks, context switch 2us.
 - Unbounded blocking: a shared mutex has priority inheritance disabled.
-- Aperiodic task: no deadline guarantee is computed.
+- Aperiodic task: its explicit deadline is reported, but no arrival-rate or deadline guarantee is computed.
 
 _Response-time bounds are analytical worst cases. The simulation is one deterministic schedule of the same model; a simulated latency above its bound is a modelling bug, not a nicer number._

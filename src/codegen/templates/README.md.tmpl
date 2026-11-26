@@ -12,6 +12,10 @@ make qnx        # x86_64
 make qnx-arm    # aarch64le, for a board
 ```
 
+`qnx-arm` builds only the AArch64 executable. `image.build.template` is an
+x86_64 boot image template; there is no matching AArch64 image template, so a
+board image needs its own startup and driver lines.
+
 Copy `scheduloscope-harness` to the target and run it with the privileges that
 real-time priorities and priority inheritance require (root, or a process with
 `PROCMGR_AID_PRIORITY`):
@@ -28,9 +32,11 @@ and skipped-activation counts.
 If a thread cannot be given its modelled policy and priority, the harness stops
 with an explanatory error instead of returning numbers for a different system.
 
-`image.build.template` is a starting point for `mkifs`; it copies the harness
-plus `libc.so` and `libgcc_s.so`, creates a writable `/tmp`, and runs the harness
-with `-o /tmp/report.json`. It has not been built or booted here.
+`image.build.template` is a starting point for `mkifs`; it copies the harness,
+the QNX 8 dynamic loader `ldqnx-64.so.2`, `libc.so` and `libgcc_s.so.1`, and
+creates the `/usr/lib/ldqnx-64.so.2` symlink the ELF interpreter needs. It also
+creates a writable `/tmp` and runs the harness with `-o /tmp/report.json`. It has
+not been built or booted here.
 
 ## Build and run on a POSIX host
 
@@ -57,9 +63,20 @@ those numbers say nothing about on-target latency.
   yielding the processor.
 
 Response time is `completion - nominal release`, so it includes activation
-latency, execution and blocking. Activation latency and response time are
-reported separately. An aperiodic task has no deadline, so it reports response
-times but never a deadline miss.
+latency, execution and blocking. `misses` counts completed jobs whose response
+exceeded their deadline; `skipped` counts individual nominal periodic releases
+that were never activated (one per miss, not one per starvation episode);
+`deadline_misses` is their sum. A deadline of 0 means "none" and never misses;
+omitting `deadline` produces 0, while an explicit zero is rejected by the parser.
+All task threads arrive at a start gate before the first release, so creating a
+thread late cannot shift another task's window. Servers stop on a distinct
+stop pulse/message and are joined with a bound; the harness never runs a normal
+handler for a stop. Activation latency and response time are
+reported separately. An aperiodic task has no deadline by default: its
+generated deadline is 0, so it reports response times but no deadline misses.
+If the model gives an aperiodic task an explicit deadline, the harness measures
+completions against it, but response-time analysis still makes no guarantee
+about future arrival rates.
 
 ## What it does not reproduce
 
@@ -70,7 +87,9 @@ times but never a deadline miss.
 - `yield` and `setPriority` segments (Scheduloscope reports them when the model
   uses them);
 - cache effects, memory pressure, DVFS, or the cost of the rest of your system;
-- RPC timeouts (the harness blocks until the server replies).
+- RPC timeouts (the harness blocks until the server replies);
+- a guarantee for an aperiodic arrival pattern: an explicit deadline is an
+  observed target, not a schedulability result.
 
 Measure the CPU budget of each segment on the real board before trusting the
 analysis. A harness number above the analytical bound means the model is wrong,

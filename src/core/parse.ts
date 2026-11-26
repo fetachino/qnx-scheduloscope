@@ -518,8 +518,14 @@ function parseTasks(value: unknown, bag: DiagnosticBag): TaskModel[] | undefined
           ? activation.minInterarrivalUs
           : activation.meanInterarrivalUs
       : undefined;
+    /*
+     * Aperiodic tasks have no deadline unless the model gives one explicitly.
+     * Do not default it to the mean interarrival: that would invent a
+     * guarantee the analysis does not make and mark every slow job late.
+     */
+    const deadlineFallback = activation?.type === 'aperiodic' ? 0 : nominal;
     const deadlineUs = duration(item['deadline'] ?? item['deadlineUs'], `${path}.deadline`, bag, {
-      fallback: nominal,
+      fallback: deadlineFallback,
       min: 1,
     });
 

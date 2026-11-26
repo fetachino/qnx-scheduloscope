@@ -97,6 +97,9 @@ export function emitWorkloadConfig(model: SystemModel): string {
     1,
     ...model.tasks.map((task) => task.priority),
     ...model.channels.map((channel) => channel.basePriority),
+    ...model.resources
+      .filter((resource) => resource.protocol === 'protect')
+      .map((resource) => resource.ceiling ?? 0)
   );
   const out: string[] = [];
   out.push('/*');
@@ -107,6 +110,7 @@ export function emitWorkloadConfig(model: SystemModel): string {
   out.push('#define SS_WORKLOAD_CONFIG_H');
   out.push('');
   out.push('#define SS_MAX_PRIORITY ' + String(maxPriority));
+  out.push('#define SS_PRIVILEGED_CEILING ' + String(model.cpu.privilegedPriorityCeiling));
   out.push('#define SS_HAS_INTERRUPTS ' + (model.interrupts.sources.length > 0 ? '1' : '0'));
   out.push('');
   out.push('#endif /* SS_WORKLOAD_CONFIG_H */');

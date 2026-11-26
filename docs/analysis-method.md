@@ -78,7 +78,9 @@ response time is R, the simulated worst case must not exceed it.
 - Self-suspending jobs (a `sleep` or an `rpc` segment in the middle of a job) break the classic
   bound: the equation assumes a job never releases the CPU voluntarily. Scheduloscope detects
   the pattern and downgrades the verdict instead of reporting a number it cannot defend.
-- Aperiodic tasks have no deadline guarantee; they are simulated for CPU load and reported
-  without a bound.
+- Aperiodic tasks have no deadline by default (`deadlineUs = 0`, produced by omitting the field;
+  an explicit zero is rejected) and are simulated for CPU load without a bound or a miss count. If
+  the model gives one an explicit positive deadline, the simulator and
+  harness measure completions against it as an observed target, but RTA still makes no arrival-rate
+  or future-deadline guarantee.
 - The analysis is single-core, like the rest of v1.
-

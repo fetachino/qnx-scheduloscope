@@ -169,7 +169,13 @@ export function analyzeResponseTimes(model: SystemModel, derived: DerivedModel =
 
     if (cost.selfSuspends) caveats.push('Job self-suspends inside its execution window; the bound is optimistic.');
     if (cost.fixedPriorityBlocking) caveats.push('Uses a channel with _NTO_CHF_FIXED_PRIORITY; blocking is bounded only by the server response time.');
-    if (task.activation.type === 'aperiodic') caveats.push('Aperiodic task: no deadline guarantee is computed.');
+    if (task.activation.type === 'aperiodic') {
+      caveats.push(
+        task.deadlineUs > 0
+          ? 'Aperiodic task: its explicit deadline is reported, but no arrival-rate or deadline guarantee is computed.'
+          : 'Aperiodic task: no deadline is set, so no deadline guarantee is computed.',
+      );
+    }
     if (blockingTerms.some((term) => term.kind === 'unbounded')) caveats.push('Unbounded blocking: a shared mutex has priority inheritance disabled.');
 
     const deadlineMet = task.activation.type === 'aperiodic' ? null : solved.converged && responseUs <= task.deadlineUs;

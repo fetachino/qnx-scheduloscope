@@ -79,9 +79,9 @@ delegated execution.
 | `policy` | `fifo`, `rr`, `sporadic` | `fifo` | `SCHED_FIFO`, `SCHED_RR`, `SCHED_SPORADIC`. |
 | `period` | duration | - | Periodic activation. |
 | `minInterarrival` | duration | - | Sporadic activation with a minimum separation. |
-| `meanInterarrival` | duration | - | Aperiodic activation with a mean separation (simulation only, no deadline bound is claimed). |
+| `meanInterarrival` | duration | - | Aperiodic activation with a mean separation (simulation only; no arrival-rate or deadline guarantee is claimed). |
 | `offset` | duration | `0` | First release relative to t=0. |
-| `deadline` | duration | period | Relative deadline. |
+| `deadline` | duration | period, or none for aperiodic | Relative deadline. An aperiodic task without one gets `deadlineUs = 0` and is never counted as missing; omit the field rather than writing zero (an explicit zero is rejected). An explicit positive aperiodic deadline is measured as an observed target. |
 | `sporadic` | block | - | Required when `policy: sporadic`. |
 | `segments` | list | required | The per-job program, executed in order. |
 | `notes` | string | - | Shown in reports. |
@@ -146,4 +146,3 @@ Codes are stable and can be grepped in CI: `E_` errors block analysis, `W_` warn
 | `W_UNBOUNDED_BLOCKING` | A shared mutex has `protocol: none`. |
 | `W_RATE_MONOTONIC` | Priorities are not rate-monotonic and a task misses. |
 | `W_SELF_SUSPENSION` | A job sleeps or waits on a message, so the RTA bound is not exact. |
-

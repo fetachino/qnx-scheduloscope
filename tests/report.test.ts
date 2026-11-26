@@ -53,6 +53,15 @@ test('diagnostics from every stage are merged without duplicates', () => {
   assert.equal(new Set(keys).size, keys.length);
 });
 
+test('an aperiodic task with no deadline is shown as none, not 0us', () => {
+  const source = TWO_TASKS + ['  - name: events', '    priority: 10', '    meanInterarrival: 15ms', '    segments:', '      - cpu: 100us', ''].join('\n');
+  const markdown = renderMarkdown(bundle(source));
+  assert.match(markdown, /\| events \| fifo \| 10 \| 15ms \| [0-9.]+us \| none \|/);
+  assert.doesNotMatch(markdown, /\| events \|[^\n]*\| 0us \|/);
+  const html = renderHtml(bundle(source));
+  assert.match(html, />none</);
+});
+
 test('percent renders a stable two-decimal figure', () => {
   assert.equal(percent(0.2), '20.0%');
   assert.equal(percent(0.12345), '12.3%');

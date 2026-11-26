@@ -42,20 +42,21 @@ int ss_init(void) {
     if (g_cycles_per_us == 0) g_cycles_per_us = 1;
     g_epoch_cycles = ClockCycles();
 
-#if SS_MAX_PRIORITY > 63
+#if SS_MAX_PRIORITY > SS_PRIVILEGED_CEILING
     /*
-     * Priorities above the unprivileged ceiling (procnto -P, 63 by default)
-     * need PROCMGR_AID_PRIORITY. Ask for it for ourselves; if the process is
-     * not allowed to, keep going and say so, because the measurement is still
-     * useful at the clamped priority. Running as root grants it implicitly.
+     * Priorities and PCP ceilings above the unprivileged ceiling (procnto -P,
+     * 63 by default) need PROCMGR_AID_PRIORITY. Ask for it for ourselves. If we
+     * cannot get it, thread/mutex setup below fails loudly and no measurement is
+     * written; silently using a lower priority would describe another system.
      */
     if (procmgr_ability(0,
                         PROCMGR_ADN_NONROOT | PROCMGR_AOP_ALLOW | PROCMGR_AID_PRIORITY,
                         PROCMGR_AID_EOL) != 0) {
         fprintf(stderr,
-                "[scheduloscope] cannot enable priorities above 63 (%s); run as root or "
-                "start the harness with 'on -P %d'\n",
-                strerror(errno), (int)SS_MAX_PRIORITY);
+                "[scheduloscope] cannot request PROCMGR_AID_PRIORITY for priority/ceiling %d "
+                "above the unprivileged ceiling %d (%s); run as root or grant "
+                "PROCMGR_AID_PRIORITY to the harness\n",
+                (int)SS_MAX_PRIORITY, (int)SS_PRIVILEGED_CEILING, strerror(errno));
     }
 #endif
     return 0;
@@ -161,27 +162,176 @@ int ss_thread_start(ss_thread *t, const char *name, int priority, int policy,
 }
 
 int ss_thread_join(ss_thread *t) {
-    if (!t->started) return -1;
-    return pthread_join((pthread_t)t->handle, NULL) == 0 ? 0 : -1;
+    if (!t || !t->started) return -1;
+    int rc = pthread_join((pthread_t)t->handle, NULL);
+    if (rc == 0) t->started = 0;
+    return rc == 0 ? 0 : -1;
+}
+
+int ss_thread_join_timeout(ss_thread *t, uint64_t timeout_ms) {
+    if (!t || !t->started) return -1;
+#ifdef SS_FORCE_JOIN_FAILURE
+    return -1;
+#endif
+    struct timespec deadline;
+    if (clock_gettime(CLOCK_REALTIME, &deadline) != 0) return -1;
+    deadline.tv_sec += (time_t)(timeout_ms / 1000ull);
+    deadline.tv_nsec += (long)((timeout_ms % 1000ull) * 1000000ull);
+    if (deadline.tv_nsec >= 1000000000L) {
+        deadline.tv_sec++;
+        deadline.tv_nsec -= 1000000000L;
+    }
+    int rc = pthread_timedjoin((pthread_t)t->handle, NULL, &deadline);
+    if (rc == 0) {
+        t->started = 0;
+        return 0;
+    }
+    return rc == ETIMEDOUT ? SS_JOIN_TIMEOUT : -1;
+}
+
+/* ---- start gate ------------------------------------------------------ */
+
+typedef struct {
+    pthread_mutex_t mu;
+    pthread_cond_t cv;
+    int waiters;
+    int arrived;
+    int released;
+} gate_impl;
+
+int ss_gate_init(ss_gate *g, int waiters) {
+    if (!g || waiters < 0) return -1;
+    gate_impl *impl = (gate_impl *)calloc(1, sizeof(*impl));
+    if (!impl) return -1;
+    int rc = pthread_mutex_init(&impl->mu, NULL);
+    if (rc != 0) {
+        free(impl);
+        return -1;
+    }
+    rc = pthread_cond_init(&impl->cv, NULL);
+    if (rc != 0) {
+        pthread_mutex_destroy(&impl->mu);
+        free(impl);
+        return -1;
+    }
+    impl->waiters = waiters;
+    g->impl = impl;
+    return 0;
+}
+
+int ss_gate_arrive(ss_gate *g) {
+    gate_impl *impl = g ? (gate_impl *)g->impl : NULL;
+    if (!impl) return -1;
+    if (pthread_mutex_lock(&impl->mu) != 0) return -1;
+    impl->arrived++;
+    pthread_cond_broadcast(&impl->cv);
+    while (!impl->released) {
+        if (pthread_cond_wait(&impl->cv, &impl->mu) != 0) {
+            pthread_mutex_unlock(&impl->mu);
+            return -1;
+        }
+    }
+    pthread_mutex_unlock(&impl->mu);
+    return 0;
+}
+
+int ss_gate_wait_ready(ss_gate *g, uint64_t timeout_ms) {
+    gate_impl *impl = g ? (gate_impl *)g->impl : NULL;
+    if (!impl) return -1;
+    struct timespec deadline;
+    if (clock_gettime(CLOCK_REALTIME, &deadline) != 0) return -1;
+    deadline.tv_sec += (time_t)(timeout_ms / 1000ull);
+    deadline.tv_nsec += (long)((timeout_ms % 1000ull) * 1000000ull);
+    if (deadline.tv_nsec >= 1000000000L) {
+        deadline.tv_sec++;
+        deadline.tv_nsec -= 1000000000L;
+    }
+    if (pthread_mutex_lock(&impl->mu) != 0) return -1;
+    int result = 0;
+    while (impl->arrived < impl->waiters && !impl->released) {
+        int rc = pthread_cond_timedwait(&impl->cv, &impl->mu, &deadline);
+        if (rc == ETIMEDOUT) {
+            result = SS_JOIN_TIMEOUT;
+            break;
+        }
+        if (rc != 0) {
+            result = -1;
+            break;
+        }
+    }
+    if (impl->released && impl->arrived < impl->waiters) result = -1;
+    pthread_mutex_unlock(&impl->mu);
+    return result;
+}
+
+int ss_gate_release(ss_gate *g) {
+    gate_impl *impl = g ? (gate_impl *)g->impl : NULL;
+    if (!impl) return -1;
+    if (pthread_mutex_lock(&impl->mu) != 0) return -1;
+    impl->released = 1;
+    pthread_cond_broadcast(&impl->cv);
+    pthread_mutex_unlock(&impl->mu);
+    return 0;
+}
+
+void ss_gate_destroy(ss_gate *g) {
+    gate_impl *impl = g ? (gate_impl *)g->impl : NULL;
+    if (!impl) return;
+    pthread_cond_destroy(&impl->cv);
+    pthread_mutex_destroy(&impl->mu);
+    free(impl);
+    g->impl = NULL;
 }
 
 int ss_mutex_init(ss_mutex *m, int protocol, int ceiling) {
     pthread_mutexattr_t attr;
-    pthread_mutexattr_init(&attr);
+    int rc = pthread_mutexattr_init(&attr);
+    if (rc != 0) {
+        fprintf(stderr, "[scheduloscope] pthread_mutexattr_init failed: %s\n", strerror(rc));
+        return -1;
+    }
     if (protocol == SS_PROTO_INHERIT) {
-        pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT);
+        rc = pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT);
     } else if (protocol == SS_PROTO_PROTECT) {
-        pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_PROTECT);
-        pthread_mutexattr_setprioceiling(&attr, ceiling);
+        rc = pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_PROTECT);
+        if (rc == 0) rc = pthread_mutexattr_setprioceiling(&attr, ceiling);
+    }
+    if (rc != 0) {
+        fprintf(stderr,
+                "[scheduloscope] cannot configure mutex protocol %d ceiling %d: %s; "
+                "PTHREAD_PRIO_PROTECT and ceilings above the unprivileged limit need "
+                "PROCMGR_AID_PRIORITY (run as root or grant it with procmgr_ability)\n",
+                protocol, ceiling, strerror(rc));
+        pthread_mutexattr_destroy(&attr);
+        return -1;
     }
     pthread_mutex_t *mutex = (pthread_mutex_t *)malloc(sizeof(*mutex));
-    if (!mutex) return -1;
-    if (pthread_mutex_init(mutex, &attr) != 0) {
+    if (!mutex) {
         pthread_mutexattr_destroy(&attr);
+        return -1;
+    }
+    rc = pthread_mutex_init(mutex, &attr);
+    pthread_mutexattr_destroy(&attr);
+    if (rc != 0) {
+        fprintf(stderr,
+                "[scheduloscope] pthread_mutex_init(protocol %d, ceiling %d) failed: %s; "
+                "check PROCMGR_AID_PRIORITY if the ceiling is above the unprivileged limit\n",
+                protocol, ceiling, strerror(rc));
         free(mutex);
         return -1;
     }
-    pthread_mutexattr_destroy(&attr);
+    if (protocol == SS_PROTO_PROTECT) {
+        int actual = -1;
+        rc = pthread_mutex_getprioceiling(mutex, &actual);
+        if (rc != 0 || actual != ceiling) {
+            fprintf(stderr,
+                    "[scheduloscope] mutex ceiling was not applied: requested %d, got %d (%s)\n",
+                    ceiling, actual, rc == 0 ? "value differs" : strerror(rc));
+            pthread_mutex_destroy(mutex);
+            free(mutex);
+            return -1;
+        }
+    }
     m->impl = mutex;
     return 0;
 }
@@ -249,6 +399,13 @@ int ss_channel_recv(ss_channel *c, void *buf, size_t len, int *client) {
     memset(&info, 0, sizeof(info));
     int rcvid = MsgReceive(impl->chid, buf, len, &info);
     if (rcvid == -1) return -1;
+    if (rcvid == 0) {
+        if (len < sizeof(struct _pulse)) return -1;
+        struct _pulse pulse;
+        memcpy(&pulse, buf, sizeof(pulse));
+        /* A stop is not a request: no handler, no reply. */
+        return pulse.code == SS_STOP_PULSE_CODE ? 1 : -1;
+    }
     *client = rcvid;
     return 0;
 }
@@ -264,4 +421,13 @@ int ss_channel_send(ss_channel *c, const void *buf, size_t len) {
     /* The server replies, so give the kernel a reply buffer to write into. */
     char reply[64];
     return MsgSend(impl->coid, buf, len, reply, sizeof(reply)) == 0 ? 0 : -1;
+}
+int ss_channel_send_stop(ss_channel *c) {
+    channel_impl *impl = (channel_impl *)c->impl;
+    if (!impl) return -1;
+#ifdef SS_FORCE_STOP_FAILURE
+    return -1;
+#endif
+    /* Non-blocking pulse; -1 inherits the sender's priority. */
+    return MsgSendPulse(impl->coid, -1, SS_STOP_PULSE_CODE, 0) == 0 ? 0 : -1;
 }

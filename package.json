@@ -1,6 +1,6 @@
 {
   "name": "scheduloscope",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Design-time real-time scheduling analysis, simulation, and on-target workload generation for QNX 8.0",
   "license": "Apache-2.0",
   "type": "module",

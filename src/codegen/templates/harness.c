@@ -47,6 +47,12 @@ static uint64_t g_duration_us = SS_DURATION_US;
 static uint64_t g_start_us;
 static volatile int g_started;
 static volatile int g_stop;
+static ss_gate g_gate;
+static int g_gate_ready;
+
+/* Bounded so a missing task or server cannot hang the harness forever. */
+#define SS_START_TIMEOUT_MS 2000
+#define SS_JOIN_TIMEOUT_MS 2000
 
 static uint64_t next_random(void) {
     static uint64_t state = 0x9e3779b97f4a7c15ull;
@@ -117,16 +123,15 @@ static void server_main(void *raw) {
     int client = -1;
     char message[64];
     /*
-     * A server cannot be stopped by a flag alone: it is blocked in receive. It
-     * leaves only after handling one more request, which is the empty wake
-     * message stop_servers() sends, so every send has a receiver and no join
-     * can hang.
+     * A server cannot be stopped by a flag alone: it is blocked in receive.
+     * stop_servers() sends a distinct stop pulse/message; recv reports it
+     * separately, so no service handler runs and no reply is awaited.
      */
     for (;;) {
-        if (ss_channel_recv(&g_channels[arg->channel], message, sizeof(message), &client) != 0) break;
+        int status = ss_channel_recv(&g_channels[arg->channel], message, sizeof(message), &client);
+        if (status != 0) break;
         run_segments(def->handler, def->handler_count);
-        ss_channel_reply(&g_channels[arg->channel], client, message, 0);
-        if (g_stop) break;
+        if (ss_channel_reply(&g_channels[arg->channel], client, message, 0) != 0) break;
     }
     free(arg);
 }
@@ -139,6 +144,8 @@ static void task_main(void *raw) {
     task_stats *stats = &g_stats[index];
     free(arg);
 
+    /* Do not start timing until every task thread exists. */
+    if (ss_gate_arrive(&g_gate) != 0) return;
     while (!g_started && !g_stop) ss_sleep_us(100);
     if (g_stop) return;
 
@@ -160,27 +167,59 @@ static void task_main(void *raw) {
             next = completion + spread / 4 + (next_random() % (spread + spread / 2));
         } else {
             next += task->period_us;
-            if (next <= completion) {
+            while (next <= completion) {
                 stats->skipped++;
-                while (next <= completion) next += task->period_us;
+                next += task->period_us;
             }
         }
     }
 }
 
 /*
- * Wake every server thread with one empty request and join it. Servers block in
- * MsgReceive(), so a flag alone would never wake them; joining before the
- * channels are destroyed keeps shutdown ordered and avoids destroying a
- * condition variable while a thread is still waiting on it.
+ * Stop every server explicitly and join it with a bound. A failed stop or a
+ * join timeout is reported; channels are then left alone because a thread may
+ * still be using them.
  */
-static void stop_servers(void) {
+static int stop_servers(void) {
+    int failed = 0;
     for (int j = 0; j < g_server_count; j++) {
-        char wake = 0;
-        ss_channel_send(&g_channels[g_server_channel[j]], &wake, 0);
+        if (ss_channel_send_stop(&g_channels[g_server_channel[j]]) != 0) {
+            fprintf(stderr, "[scheduloscope] cannot send stop to server %d\n", j);
+            failed = 1;
+        }
     }
-    for (int j = 0; j < g_server_count; j++) ss_thread_join(&g_servers[j]);
+    for (int j = 0; j < g_server_count; j++) {
+        int status = ss_thread_join_timeout(&g_servers[j], SS_JOIN_TIMEOUT_MS);
+        if (status == SS_JOIN_TIMEOUT) {
+            fprintf(stderr, "[scheduloscope] server %d did not stop within %d ms\n", j, SS_JOIN_TIMEOUT_MS);
+            failed = 1;
+        } else if (status != 0) {
+            fprintf(stderr, "[scheduloscope] cannot join server %d\n", j);
+            failed = 1;
+        }
+    }
+    if (failed) {
+        fprintf(stderr, "[scheduloscope] shutdown incomplete; channels and mutexes will not be destroyed\n");
+        return -1;
+    }
     g_server_count = 0;
+    return 0;
+}
+
+static int join_tasks(uint64_t timeout_ms) {
+    for (int i = 0; i < g_task_count; i++) {
+        int status = ss_thread_join_timeout(&g_tasks[i], timeout_ms);
+        if (status == SS_JOIN_TIMEOUT) {
+            fprintf(stderr, "[scheduloscope] task %d did not finish within %" PRIu64 " ms\n", i, timeout_ms);
+            return -1;
+        }
+        if (status != 0) {
+            fprintf(stderr, "[scheduloscope] cannot join task %d\n", i);
+            return -1;
+        }
+    }
+    g_task_count = 0;
+    return 0;
 }
 
 static void usage(const char *argv0) {
@@ -266,6 +305,14 @@ int main(int argc, char **argv) {
                 goto shutdown;
             }
             arg->channel = i;
+#ifdef SS_FORCE_SERVER_FAILURE_INDEX
+            if (g_server_count == SS_FORCE_SERVER_FAILURE_INDEX) {
+                fprintf(stderr, "[scheduloscope] injected server start failure\n");
+                free(arg);
+                rc = 1;
+                goto shutdown;
+            }
+#endif
             if (ss_thread_start(&g_servers[g_server_count], def->name, def->base_priority, SS_POLICY_FIFO, 0, 0, 0, 0,
                                 server_main, arg) != 0) {
                 fprintf(stderr, "[scheduloscope] cannot start server for %s\n", def->name);
@@ -279,8 +326,12 @@ int main(int argc, char **argv) {
     }
 #endif /* SS_CHANNEL_COUNT > 0 */
 
-    g_start_us = ss_now_us();
-    g_started = 1;
+    if (ss_gate_init(&g_gate, SS_TASK_COUNT) != 0) {
+        fprintf(stderr, "[scheduloscope] cannot create the start gate\n");
+        rc = 1;
+        goto shutdown;
+    }
+    g_gate_ready = 1;
     for (int i = 0; i < SS_TASK_COUNT; i++) {
         const ss_task_def *def = &ss_tasks[i];
         task_arg *arg = (task_arg *)malloc(sizeof(*arg));
@@ -289,6 +340,12 @@ int main(int argc, char **argv) {
             goto shutdown;
         }
         arg->index = i;
+#ifdef SS_TEST_TASK_CREATE_DELAY_US
+#ifndef SS_TEST_TASK_CREATE_DELAY_INDEX
+#define SS_TEST_TASK_CREATE_DELAY_INDEX 1
+#endif
+        if (i == SS_TEST_TASK_CREATE_DELAY_INDEX) ss_sleep_us(SS_TEST_TASK_CREATE_DELAY_US);
+#endif
         if (ss_thread_start(&g_tasks[i], def->name, def->priority, def->policy, def->sporadic_low_priority,
                             def->sporadic_budget_us, def->sporadic_replenish_us, def->sporadic_max_repl, task_main, arg) != 0) {
             fprintf(stderr, "[scheduloscope] cannot start %s; the measurement is invalid\n", def->name);
@@ -299,10 +356,27 @@ int main(int argc, char **argv) {
         g_task_count = i + 1;
     }
 
-    for (int i = 0; i < g_task_count; i++) ss_thread_join(&g_tasks[i]);
-    g_task_count = 0;
+    if (ss_gate_wait_ready(&g_gate, SS_START_TIMEOUT_MS) != 0) {
+        fprintf(stderr, "[scheduloscope] not every task thread became ready within %d ms\n", SS_START_TIMEOUT_MS);
+        rc = 1;
+        goto shutdown;
+    }
+    g_start_us = ss_now_us();
+    g_started = 1;
+    if (ss_gate_release(&g_gate) != 0) {
+        fprintf(stderr, "[scheduloscope] cannot release the start gate\n");
+        rc = 1;
+        goto shutdown;
+    }
+    if (join_tasks((g_duration_us / 1000ull) + SS_JOIN_TIMEOUT_MS) != 0) {
+        rc = 1;
+        goto shutdown;
+    }
     g_stop = 1;
-    stop_servers();
+    if (stop_servers() != 0) {
+        rc = 1;
+        goto shutdown;
+    }
     elapsed = ss_now_us() - g_start_us;
 
     if (!ss_scheduling_enforced()) {
@@ -312,14 +386,16 @@ int main(int argc, char **argv) {
     }
 
     if (!quiet) {
-        printf("%-16s %10s %10s %10s %10s %10s %10s %8s\n", "task", "releases", "completed", "min us", "mean us",
-               "max us", "lat max", "misses");
+        printf("%-16s %9s %9s %9s %9s %9s %9s %9s %9s %9s\n", "task", "started", "completed", "skipped",
+               "late", "deadline", "min us", "mean us", "max us", "lat max");
         for (int i = 0; i < SS_TASK_COUNT; i++) {
             const task_stats *stats = &g_stats[i];
             double mean = stats->completed ? (double)stats->sum_us / (double)stats->completed : 0.0;
-            printf("%-16s %10" PRIu64 " %10" PRIu64 " %10" PRIu64 " %10.0f %10" PRIu64 " %10" PRIu64 " %8" PRIu64 "\n",
-                   ss_tasks[i].name, stats->activations, stats->completed, stats->min_us, mean, stats->max_us,
-                   stats->lat_max_us, stats->misses);
+            uint64_t deadline_misses = stats->misses + stats->skipped;
+            printf("%-16s %9" PRIu64 " %9" PRIu64 " %9" PRIu64 " %9" PRIu64 " %9" PRIu64 " %9" PRIu64
+                   " %9.0f %9" PRIu64 " %9" PRIu64 "\n",
+                   ss_tasks[i].name, stats->activations, stats->completed, stats->skipped, stats->misses,
+                   deadline_misses, stats->min_us, mean, stats->max_us, stats->lat_max_us);
         }
         printf("window %.3f s, system %s\n", (double)elapsed / 1e6, SS_SYSTEM_NAME);
     }
@@ -361,9 +437,11 @@ int main(int argc, char **argv) {
                     "    {\"name\": \"%s\", \"activations\": %" PRIu64 ", \"completed\": %" PRIu64
                     ", \"min_us\": %" PRIu64 ", \"mean_us\": %.1f, \"max_us\": %" PRIu64
                     ", \"max_activation_latency_us\": %" PRIu64 ", \"mean_activation_latency_us\": %.1f"
-                    ", \"misses\": %" PRIu64 ", \"skipped\": %" PRIu64 "}%s\n",
+                    ", \"misses\": %" PRIu64 ", \"skipped\": %" PRIu64
+                    ", \"deadline_misses\": %" PRIu64 "}%s\n",
                     name, stats->activations, stats->completed, stats->min_us, mean, stats->max_us,
                     stats->lat_max_us, lat_mean, stats->misses, stats->skipped,
+                    stats->misses + stats->skipped,
                     i + 1 < SS_TASK_COUNT ? "," : "");
         }
         fprintf(file, "  ]\n}\n");
@@ -375,15 +453,21 @@ int main(int argc, char **argv) {
 shutdown:
     g_started = 1;
     g_stop = 1;
-    for (int i = 0; i < g_task_count; i++) ss_thread_join(&g_tasks[i]);
-    g_task_count = 0;
-    stop_servers();
+    if (g_gate_ready) ss_gate_release(&g_gate);
+    int safe = 1;
+    if (g_task_count > 0 && join_tasks(SS_JOIN_TIMEOUT_MS) != 0) safe = 0;
+    if (safe && g_server_count > 0 && stop_servers() != 0) safe = 0;
+    if (!safe) {
+        fprintf(stderr, "[scheduloscope] a thread may still be running; leaving channels, mutexes and gate intact\n");
+    } else {
 #if SS_CHANNEL_COUNT > 0
-    for (int i = g_channel_ready - 1; i >= 0; i--) ss_channel_destroy(&g_channels[i]);
+        for (int i = g_channel_ready - 1; i >= 0; i--) ss_channel_destroy(&g_channels[i]);
 #endif
 #if SS_RESOURCE_COUNT > 0
-    for (int i = g_mutex_ready - 1; i >= 0; i--) ss_mutex_destroy(&g_mutexes[i]);
+        for (int i = g_mutex_ready - 1; i >= 0; i--) ss_mutex_destroy(&g_mutexes[i]);
 #endif
+        if (g_gate_ready) ss_gate_destroy(&g_gate);
+    }
     ss_shutdown();
-    return rc;
+    return safe ? rc : 1;
 }

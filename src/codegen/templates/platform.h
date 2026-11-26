@@ -36,6 +36,19 @@ struct ss_channel {
     void *impl;
 };
 
+/*
+ * A start gate: every task thread arrives before main releases the gate, so no
+ * task can run before all task threads exist and the nominal timeline starts.
+ */
+typedef struct ss_gate {
+    void *impl;
+} ss_gate;
+
+/* Pulse code used only by the shutdown path; never a service request. */
+#define SS_STOP_PULSE_CODE 0x5353
+/* 0 = success, 1 = timeout, -1 = not started or error. */
+#define SS_JOIN_TIMEOUT 1
+
 /* Process-wide setup: scheduler privileges, clock calibration. */
 int ss_init(void);
 void ss_shutdown(void);
@@ -62,6 +75,13 @@ int ss_thread_start(ss_thread *t, const char *name, int priority, int policy,
                     uint64_t sporadic_replenish_us, int sporadic_max_repl,
                     void (*entry)(void *), void *arg);
 int ss_thread_join(ss_thread *t);
+int ss_thread_join_timeout(ss_thread *t, uint64_t timeout_ms);
+
+int ss_gate_init(ss_gate *g, int waiters);
+int ss_gate_arrive(ss_gate *g);
+int ss_gate_wait_ready(ss_gate *g, uint64_t timeout_ms);
+int ss_gate_release(ss_gate *g);
+void ss_gate_destroy(ss_gate *g);
 
 int ss_mutex_init(ss_mutex *m, int protocol, int ceiling);
 void ss_mutex_destroy(ss_mutex *m);
@@ -73,5 +93,7 @@ void ss_channel_destroy(ss_channel *c);
 int ss_channel_recv(ss_channel *c, void *buf, size_t len, int *client);
 int ss_channel_reply(ss_channel *c, int client, const void *buf, size_t len);
 int ss_channel_send(ss_channel *c, const void *buf, size_t len);
+/* Explicit shutdown request: no service handler runs and no reply is awaited. */
+int ss_channel_send_stop(ss_channel *c);
 
 #endif /* SS_PLATFORM_H */

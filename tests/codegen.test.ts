@@ -37,6 +37,28 @@ test('the workload mirrors the model task by task', () => {
   assert.match(workload, /#define SS_SYSTEM_NAME "two-tasks"/);
 });
 
+test('an aperiodic task without a deadline emits deadline 0 and is documented that way', () => {
+  const source = TWO_TASKS + ['  - name: events', '    priority: 10', '    meanInterarrival: 15ms', '    segments:', '      - cpu: 100us', ''].join('\n');
+  const harness = generate(source);
+  const workload = harness.files.find((file) => file.path === 'workload.h')!.content;
+  assert.match(workload, /\{ "events", 10, SS_POLICY_FIFO, 2, 0u, 15000u, 0u/);
+  const readme = harness.files.find((file) => file.path === 'README.md')!.content;
+  assert.match(readme, /deadline 0|no deadline/i);
+  const explicit = generate(source.replace('    meanInterarrival: 15ms', '    meanInterarrival: 15ms\n    deadline: 50ms'));
+  const explicitWorkload = explicit.files.find((file) => file.path === 'workload.h')!.content;
+  assert.match(explicitWorkload, /\{ "events", 10, SS_POLICY_FIFO, 2, 0u, 15000u, 50000u/);
+});
+
+test('a PCP ceiling above the unprivileged limit is included in SS_MAX_PRIORITY', () => {
+  const source = TWO_TASKS.replace('  - name: fast\n    priority: 60', '  - name: fast\n    priority: 20')
+    + ['resources:', '  - name: lock', '    protocol: protect', '    ceiling: 70', ''].join('\n');
+  const harness = generate(source);
+  const config = harness.files.find((file) => file.path === 'workload_config.h')!.content;
+  assert.match(config, /#define SS_MAX_PRIORITY 70/);
+  const qnx = harness.files.find((file) => file.path === 'platform_qnx.c')!.content;
+  assert.match(qnx, /pthread_mutex_getprioceiling/);
+});
+
 test('the QNX backend uses the scheduling APIs the model asks for', () => {
   const harness = generate();
   const qnx = harness.files.find((file) => file.path === 'platform_qnx.c')!.content;
@@ -110,7 +132,7 @@ test('the generated config publishes the highest priority so the backend can ask
   assert.match(qnx, /#include "workload_config.h"/);
   assert.match(qnx, /procmgr_ability/);
   assert.match(qnx, /PROCMGR_AID_PRIORITY/);
-  assert.match(qnx, /SS_MAX_PRIORITY > 63/);
+  assert.match(qnx, /SS_MAX_PRIORITY > SS_PRIVILEGED_CEILING/);
 });
 
 test('a QNX thread that cannot get its policy or priority stops the measurement', () => {
@@ -144,7 +166,7 @@ test('the harness tears down what it created, in reverse order', () => {
   const shutdown = harnessC.indexOf('ss_shutdown();', harnessC.indexOf('shutdown:'));
   assert.ok(destroyChannel > 0 && destroyMutex > destroyChannel, 'channels before mutexes');
   assert.ok(shutdown > destroyMutex, 'platform shutdown last');
-  assert.match(harnessC, /static void stop_servers\(void\)/);
+  assert.match(harnessC, /static int stop_servers\(void\)/);
   assert.match(harnessC, /goto shutdown;/);
 });
 
@@ -163,7 +185,9 @@ test('the image build script installs the libraries the dynamic harness needs an
   assert.match(build, /procnto-smp-instr -P 63/);
   assert.match(build, /\[type=dir perms=0777\] \/tmp/);
   assert.match(build, /libc\.so/);
-  assert.match(build, /libgcc_s\.so/);
+  assert.match(build, /libgcc_s\.so\.1/);
+  assert.match(build, /ldqnx-64\.so\.2/);
+  assert.match(build, /\[type=link\] \/usr\/lib\/ldqnx-64\.so\.2=\/proc\/boot\/ldqnx-64\.so\.2/);
   assert.match(build, /-o \/tmp\/report\.json/);
   assert.doesNotMatch(build, /startup-x86-64/);
 });
@@ -175,6 +199,19 @@ test('the channel send path provides a reply buffer for MsgReply', () => {
   assert.match(qnx, /MsgSend\(impl->coid, buf, len, reply, sizeof\(reply\)\)/);
 });
 
+test('the harness uses an explicit stop message and a bounded startup barrier', () => {
+  const harness = generate();
+  const harnessC = harness.files.find((file) => file.path === 'harness.c')!.content;
+  const platform = harness.files.find((file) => file.path === 'platform.h')!.content;
+  assert.match(platform, /ss_channel_send_stop/);
+  assert.match(platform, /ss_thread_join_timeout/);
+  assert.match(platform, /ss_gate_wait_ready/);
+  assert.match(harnessC, /ss_channel_send_stop\(&g_channels\[g_server_channel\[j\]\]\)/);
+  assert.doesNotMatch(harnessC, /ss_channel_send\(&g_channels\[g_server_channel\[s\]\], message, 1\)/);
+  assert.match(harnessC, /ss_gate_wait_ready/);
+  assert.match(harnessC, /g_start_us = ss_now_us\(\);/);
+});
+
 test('the QNX backend releases channels, mutexes and thread arguments', () => {
   const harness = generate();
   const qnx = harness.files.find((file) => file.path === 'platform_qnx.c')!.content;
@@ -184,6 +221,6 @@ test('the QNX backend releases channels, mutexes and thread arguments', () => {
   assert.match(qnx, /ConnectDetach\(impl->coid\);\s*\n\s*ChannelDestroy\(impl->chid\);\s*\n\s*free\(impl\);/);
   assert.match(qnx, /free\(args\);/);
   const harnessC = harness.files.find((file) => file.path === 'harness.c')!.content;
-  // Both thread entries, plus the server and task start-failure paths.
-  assert.equal((harnessC.match(/free\(arg\);/g) ?? []).length, 4);
+  // Both thread entries, plus the server, injected-server and task start-failure paths.
+  assert.equal((harnessC.match(/free\(arg\);/g) ?? []).length, 5);
 });
