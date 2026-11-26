@@ -1,7 +1,7 @@
 # Verification
 
 This page records what was actually executed, on what, with which command, and what was not.
-Nothing here is projected or estimated: if a row says *not run*, the tool has never been built
+Nothing on this page is projected or estimated: if a row says *not run*, the tool has never been built
 with `qcc`, and the row says so.
 
 ## Environment used for the checks below
@@ -41,7 +41,7 @@ Result: **96 tests, 92 passing, 0 failing, 4 skipped**, about 3 seconds. The fou
 ## Scale
 
 `npm run bench` builds task sets with about 60% utilisation and distinct priorities, then times
-the analysis and a 100 ms simulation on the machine running it (Windows 11, Node 24):
+the analysis and a 100 ms simulation on the benchmark host (Windows 11, Node 24):
 
 | Tasks | Derive ms | Analysis ms | Simulate ms | Context switches | Verdict |
 | --- | --- | --- | --- | --- | --- |
@@ -176,17 +176,18 @@ It also copies `libc.so` and `libgcc_s.so.1`. The official [shared libraries](ht
 page gives the equivalent buildfile snippet `libc.so`, `libgcc_s.so.1`,
 `/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2`; the [system buildfile sample](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.building/topic/buildfiles/buildfile_structure.html)
 uses `procmgr_symlink ../../proc/boot/ldqnx-64.so.2 /usr/lib/ldqnx-64.so.2` in its startup script.
-The template was **not** run through `mkifs` here: without the SDP its exact output cannot be
-verified, so it remains labelled unbuilt. The filename and interpreter path are the ones the QNX 8
-documentation uses; the loader's `SONAME`/`DT_NEEDED` entries were not inspected without the SDP.
+The template was **not** run through `mkifs` in this verification pass: without the SDP its exact
+output cannot be verified, so it remains labelled unbuilt. The filename and interpreter path are
+the ones the QNX 8 documentation uses; the loader's `SONAME`/`DT_NEEDED` entries were not
+inspected without the SDP.
 On an SDP machine the remaining check is `readelf -d $QNX_TARGET/x86_64/lib/ldqnx-64.so.2`, then
 `mkifs` and a boot that runs `scheduloscope-harness`.
 
 ## QNX API review against the 8.0 documentation
 
-The QNX half of the generator could not be compiled here, so every call it makes was checked by
-hand against the QNX SDP 8.0 reference pages. This is a documentation review, not a build, and it
-is recorded as such. Each row names the page it was checked against.
+The QNX half of the generator was not compiled in this verification pass. Each call it makes was
+reviewed against the QNX SDP 8.0 reference pages. This is a documentation review, not a build, and
+it is recorded as such. Each row names the page it was checked against.
 
 | API | What the generated code does | Verdict |
 | --- | --- | --- |
@@ -199,7 +200,7 @@ is recorded as such. Each row names the page it was checked against.
 | [`ChannelDestroy`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/channeldestroy.html) | Both error paths and the shutdown path destroy the channel. | Corrected earlier from `ConnectDetach`, which detaches the connection, not the channel. |
 | [`ClockCycles`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/clockcycles.html) | Start and end timestamps, normalised with `cycles_per_sec` from `SYSPAGE_ENTRY(qtime)`. | Correct; cycle counts are the right clock for sub-microsecond jobs. |
 | [`procmgr_ability`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/procmgr_ability.html) | Asks for `PROCMGR_AID_PRIORITY` when a task priority or a `protect` mutex ceiling exceeds the `SS_PRIVILEGED_CEILING` generated from the model (63 by default). | Corrected. The check read an undefined macro and was silently compiled out; it now reads `SS_MAX_PRIORITY` from the generated `workload_config.h`. Without the ability `pthread_attr_setschedparam` or `pthread_mutexattr_setprioceiling` fails, and the harness stops with an explanation. The message points to root or to granting `PROCMGR_AID_PRIORITY`, not to changing `procnto -P`. |
-| [`mkifs`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mkifs.html) | `image.build.template`: `[virtual=x86_64,elf]`, `startup-x86_64`, `procnto-smp-instr -P 63`, a writable `/tmp`, and a copy section with the harness, `ldqnx-64.so.2`, `libc.so` and `libgcc_s.so.1`; `[type=link] /usr/lib/ldqnx-64.so.2=/proc/boot/ldqnx-64.so.2` supplies the ELF interpreter path. | Corrected the startup name (it is `startup-x86_64`, not `startup-x86-64`), matched the QNX 8 dynamic loader and its `/usr/lib/ldqnx-64.so.2` symlink, matched the dynamic link the Makefile produces, and gave the harness a directory it can write the report to. Not built or booted here. |
+| [`mkifs`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mkifs.html) | `image.build.template`: `[virtual=x86_64,elf]`, `startup-x86_64`, `procnto-smp-instr -P 63`, a writable `/tmp`, and a copy section with the harness, `ldqnx-64.so.2`, `libc.so` and `libgcc_s.so.1`; `[type=link] /usr/lib/ldqnx-64.so.2=/proc/boot/ldqnx-64.so.2` supplies the ELF interpreter path. | Corrected the startup name (it is `startup-x86_64`, not `startup-x86-64`), matched the QNX 8 dynamic loader and its `/usr/lib/ldqnx-64.so.2` symlink, matched the dynamic link the Makefile produces, and gave the harness a directory it can write the report to. Not built or booted in this verification pass. |
 
 The QNX source is also preprocessed in CI against stub headers with `-Wundef -Werror`
 (`tests/qnx-backend.test.ts`). That catches exactly the defect above, an `SS_` macro a source
@@ -221,13 +222,13 @@ informational note that says so.
 | `image.build.template` for a bootable QNX image | **not executed** | `mkifs` ships with the SDP. The template is x86_64 only; `qnx-arm` builds an AArch64 executable but has no matching image template. |
 | Analysis and simulation of QNX semantics | executed on the host | They are models of the OS, not the OS itself. |
 
-### Obtaining the SDP: what was tried
+### QNX SDK availability
 
-The 8.0 toolchain (`qcc`, `mkifs`, the target libraries) only ships inside the QNX Software
-Development Platform, so every path below was checked before concluding the build could not run
-here.
+The 8.0 toolchain (`qcc`, `mkifs`, the target libraries) ships only inside the QNX Software
+Development Platform. The SDP was not available for this verification pass, so no QNX binary was
+built, run, or booted.
 
-| Path | Attempt | Result |
+| Path | Check | Result |
 | --- | --- | --- |
 | QNX Everywhere landing page | `GET https://www.qnx.com/products/everywhere/` | 200. The page offers "free access to QNX SDP 8.0 for non-commercial use" and every download link leads to `https://www.qnx.com/account/login.html`. |
 | Download portal | `GET https://www.qnx.com/download/group.html?programid=29178` | 200, QNX Software Center download group, gated behind a myQNX sign-in and a licence acceptance form. No anonymous artefact URL exists. |
@@ -235,23 +236,23 @@ here.
 | Container image | `docker pull qnx/qnx-sdp:8.0` | `pull access denied ... repository does not exist`. QNX publishes no public SDP image; the Docker Hub hits are third-party QEMU demos, not official distributions, and were not used. |
 | QEMU | host check | No QEMU installed, and a QNX boot image has to be produced by `mkifs` from an installed SDP anyway, so QEMU does not remove the blocker. |
 
-The licence is the blocker, not the platform: the SDP runs on Windows and Linux, and this
-machine has the disk space and a working GCC in Docker. What it does not have is a myQNX account
-with the QNX Everywhere licence accepted, and that is deliberately not something a script can
-manufacture. The QNX half of the pipeline is therefore recorded as *build-ready*, and the review
-above is the strongest statement that can honestly be made about it.
+The licence is the blocker, not the platform: the SDP runs on Windows and Linux. The QNX
+Everywhere programme requires a QNX account, acceptance of the non-commercial licence, and
+approval; those interactive steps were not completed for this verification pass. The QNX half of
+the pipeline is therefore recorded as *build-ready*, and the review above is the strongest
+statement that can be made without an SDP.
 
-Closing the gap takes four commands on a machine with the SDP installed:
+Closing the gap takes four commands on a host with the SDP installed:
 
 ```bash
 source ~/qnx800/qnxsdp-env.sh
 cd harness && make qnx
 scp scheduloscope-harness target:/tmp/ && ssh target /tmp/scheduloscope-harness -d 5000 -o /tmp/report.json
 ```
-The QNX SDP 8.0 is distributed through the myQNX portal and the QNX Everywhere programme
-requires a licensed account to download it. That account could not be obtained for this build,
-so the QNX half of the pipeline is labelled *build-ready* rather than *verified*. The exact
-commands to close the gap are in the generated `README.md`:
+The QNX SDP 8.0 is distributed through the myQNX portal, and the QNX Everywhere programme
+requires an account with the licence accepted. Those steps were not completed for this
+verification pass, so the QNX half of the pipeline is labelled *build-ready* rather than
+*verified*. The exact commands to close the gap are in the generated `README.md`:
 
 ```bash
 source ~/qnx800/qnxsdp-env.sh

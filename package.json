@@ -3,6 +3,15 @@
   "version": "1.0.2",
   "description": "Design-time real-time scheduling analysis, simulation, and on-target workload generation for QNX 8.0",
   "license": "Apache-2.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fetachino/qnx-scheduloscope.git"
+  },
+  "homepage": "https://fetachino.github.io/qnx-scheduloscope/",
+  "bugs": {
+    "url": "https://github.com/fetachino/qnx-scheduloscope/issues"
+  },
   "type": "module",
   "bin": {
     "scheduloscope": "dist/src/cli/main.js",
@@ -14,8 +23,13 @@
   },
   "files": [
     "dist",
-    "docs",
+    "docs/analysis-method.md",
+    "docs/demo-tour.md",
+    "docs/model-reference.md",
+    "docs/qnx-semantics.md",
+    "docs/verification.md",
     "examples",
+    "CHANGELOG.md",
     "LICENSE",
     "README.md"
   ],
@@ -26,6 +40,7 @@
     "test:only": "node scripts/test.mjs",
     "check:c": "node scripts/c-harness-check.mjs",
     "lint": "tsc -p tsconfig.json --noEmit",
+    "build:pages": "node scripts/build-pages.mjs",
     "demo": "node dist/src/cli/main.js report examples/motor-control.yaml --html demo/motor-control.html --md demo/motor-control.md",
     "bench": "node dist/bench/run.js"
   },

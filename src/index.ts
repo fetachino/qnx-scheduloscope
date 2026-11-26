@@ -5,9 +5,12 @@
  * model, so the same pipeline can be embedded in a build script or a test:
  *
  *   const { model } = parseModel(readFileSync('system.yaml', 'utf8'));
- *   const report = analyzeResponseTimes(model);
+ *   if (!model) throw new Error('invalid model');
+ *   const derived = derive(model);
+ *   const rta = analyzeResponseTimes(model, derived);
  *   const sim = simulate(model);
- *   writeFileSync('system.html', renderHtml({ model, report, sim, ... }));
+ *   const bundle = { model, derived, rta, sim, generatedAt: new Date().toISOString() };
+ *   writeFileSync('system.html', renderHtml(bundle));
  */
 
 export { TOOL_VERSION } from './version.js';

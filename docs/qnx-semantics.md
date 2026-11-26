@@ -18,7 +18,7 @@ Two consequences the validator enforces:
   process is privileged. Scheduloscope warns (`W_PRIVILEGED_PRIORITY`) instead of pretending the
   number is real.
 - A task at 254 or 255 is competing with the kernel. It is legal and sometimes correct for an IST,
-  but it is a code smell for application code (`W_IST_PRIORITY`).
+  but it is a code smell for application code (`W_RESERVED_PRIORITY`).
 
 ## Scheduling policies
 
@@ -50,7 +50,7 @@ thread that blocks sits at the head of its priority queue when it wakes.
 
 `protect` has a second rule: a thread must not lock two mutexes whose ceilings interact, and the
 ceiling must be at least the priority of every thread that locks it. The validator checks the
-second half (`E_PCP_CEILING`).
+second half (`E_CEILING_VIOLATION`).
 
 ## Message passing and inheritance
 
@@ -84,7 +84,7 @@ any application thread. In the model, an interrupt source contributes two things
 - Entry cost: `entryOverheadUs` per activation, charged again on the way back to the task.
 
 An interrupt that alone consumes more CPU than its period allows is caught by the validator
-(`E_IRQ_SATURATION`), because no priority assignment can fix it.
+(`E_ISR_OVERLOAD`), because no priority assignment can fix it.
 
 ## Time
 

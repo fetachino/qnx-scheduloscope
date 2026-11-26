@@ -1,7 +1,7 @@
 # Demo tour
 
 Six steps, about four minutes, all from a fresh clone. Every number below is the output of the
-command above it on the machine described in `docs/verification.md`.
+command above it in the verification environment described in [verification.md](verification.md).
 
 ```bash
 git clone https://github.com/fetachino/qnx-scheduloscope.git

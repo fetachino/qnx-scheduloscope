@@ -130,7 +130,8 @@ shown. A block must be written as
 
 ## Validation diagnostics
 
-Codes are stable and can be grepped in CI: `E_` errors block analysis, `W_` warnings do not.
+Codes are stable and can be grepped in CI: `E_` errors block analysis, `W_` warnings do not,
+and `I_` codes are informational.
 
 | Code | Meaning |
 | --- | --- |
@@ -139,10 +140,11 @@ Codes are stable and can be grepped in CI: `E_` errors block analysis, `W_` warn
 | `E_ACTIVATION` | More than one activation kind on a task. |
 | `E_PRIORITY_RANGE` | Priority outside 1..255. |
 | `E_UNKNOWN_RESOURCE`, `E_UNKNOWN_CHANNEL` | A segment references something that does not exist. |
-| `E_PCP_CEILING` | A `protect` mutex has no ceiling, or the ceiling is below a user. |
+| `E_CEILING` | A `protect` mutex has no priority ceiling. |
+| `E_CEILING_VIOLATION` | A task's priority is above the ceiling of a `protect` mutex it locks. |
 | `E_DUPLICATE` | Two tasks, resources or channels share a name. |
 | `W_PRIVILEGED_PRIORITY` | The design needs `PROCMGR_AID_PRIORITY`. |
-| `W_IST_PRIORITY` | A task uses 254 or 255, which belong to the clock and IPI IST. |
-| `W_UNBOUNDED_BLOCKING` | A shared mutex has `protocol: none`. |
-| `W_RATE_MONOTONIC` | Priorities are not rate-monotonic and a task misses. |
+| `W_RESERVED_PRIORITY` | A task or server uses 254 or 255, which belong to the clock and IPI IST. |
+| `W_NO_INHERITANCE` | A `protocol: none` mutex is shared by tasks at different priorities. |
+| `I_RATE_MONOTONIC` | A shorter-period task has a lower priority than rate-monotonic order would assign; informational. |
 | `W_SELF_SUSPENSION` | A job sleeps or waits on a message, so the RTA bound is not exact. |

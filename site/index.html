@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scheduloscope — QNX OS 8.0 scheduling analysis</title>
+  <meta name="description" content="Design-time response-time analysis, deterministic QNX OS 8.0 simulation, and generated C workload harnesses.">
+  <meta name="theme-color" content="#0d1117">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d1117;
+      --panel: #12171f;
+      --panel-2: #0f141b;
+      --line: #232a35;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #4f8cff;
+      --good: #3fb950;
+      --warn: #d29922;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.65 system-ui, -apple-system, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+    .wrap { width: min(1080px, calc(100% - 48px)); margin: 0 auto; }
+    .site-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+      padding: 24px 0; border-bottom: 1px solid var(--line);
+    }
+    .brand { color: var(--text); font-weight: 700; letter-spacing: -0.02em; font-size: 20px; }
+    .brand span { color: var(--accent); }
+    nav { display: flex; flex-wrap: wrap; gap: 18px; font-size: 14px; }
+    nav a { color: var(--muted); }
+    nav a:hover { color: var(--text); }
+    main { padding: 56px 0 72px; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 42px; align-items: start; }
+    .eyebrow { margin: 0 0 12px; color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+    h1, h2, h3 { letter-spacing: -0.025em; line-height: 1.15; }
+    h1 { margin: 0 0 18px; font-size: clamp(38px, 6vw, 62px); max-width: 13ch; }
+    .lede { margin: 0; color: #b9c2cc; font-size: 18px; max-width: 58ch; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 26px 0 18px; }
+    .button { display: inline-block; padding: 10px 16px; border-radius: 8px; font-weight: 650; font-size: 14px; }
+    .button.primary { background: var(--accent); color: #07111f; }
+    .button.secondary { border: 1px solid var(--line); color: var(--text); background: var(--panel); }
+    .button:hover { text-decoration: none; filter: brightness(1.08); }
+    .facts { display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--muted); font-size: 13px; }
+    .facts strong { color: var(--text); font-weight: 600; }
+    .shot { margin: 0; }
+    .shot img { display: block; width: 100%; height: auto; max-height: 760px; object-fit: cover; object-position: top; border: 1px solid var(--line); border-radius: var(--radius); background: #0b0f16; box-shadow: 0 18px 50px rgba(0,0,0,0.35); }
+    .shot figcaption { margin-top: 10px; color: var(--muted); font-size: 12.5px; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 54px 0 0; }
+    .card, .panel, .boundary { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+    .card { padding: 22px; }
+    .card h2 { margin: 0 0 8px; font-size: 18px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14px; }
+    .panel { padding: 26px; margin-top: 18px; }
+    .panel h2 { margin: 0 0 14px; font-size: 24px; }
+    .panel p { margin: 0 0 14px; color: #b9c2cc; }
+    .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 28px; align-items: start; }
+    .split h2 { margin-bottom: 8px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+    tr:last-child td { border-bottom: none; }
+    code { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: #0b0f16; border: 1px solid #1d2430; padding: 1px 5px; border-radius: 4px; }
+    .links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; margin: 0; padding: 0; list-style: none; }
+    .links li { padding: 9px 0; border-bottom: 1px solid var(--line); }
+    .links a { font-weight: 600; }
+    .links span { display: block; color: var(--muted); font-size: 13px; }
+    .boundary { border-left: 3px solid var(--warn); padding: 22px 24px; margin-top: 18px; }
+    .boundary h2 { margin: 0 0 8px; font-size: 19px; }
+    .boundary p { margin: 0; color: #b9c2cc; font-size: 14px; }
+    .boundary strong { color: var(--text); }
+    footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; padding: 24px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+    footer a { color: var(--muted); }
+    @media (max-width: 860px) {
+      .hero, .split { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr; }
+      h1 { max-width: 16ch; }
+      .shot { order: -1; }
+      .shot img { max-height: 540px; }
+    }
+    @media (max-width: 560px) {
+      .wrap { width: min(100% - 32px, 1080px); }
+      main { padding-top: 34px; }
+      .site-header { align-items: flex-start; flex-direction: column; }
+      .links { grid-template-columns: 1fr; }
+      .panel { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="wrap site-header">
+    <a class="brand" href="./">Schedulo<span>scope</span></a>
+    <nav aria-label="Project links">
+      <a href="https://github.com/fetachino/qnx-scheduloscope">Source</a>
+      <a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/README.md">README</a>
+      <a href="#docs">Documentation</a>
+      <a href="#reports">Reports</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">QNX OS 8.0 · Design-time scheduling analysis</p>
+        <h1>Find timing bugs before the target does.</h1>
+        <p class="lede">Scheduloscope models a QNX task set, computes a response-time bound, simulates the schedule, and generates a C harness for measuring the same workload on hardware.</p>
+        <p class="actions">
+          <a class="button primary" href="demo/motor-control.html">Open the generated report</a>
+          <a class="button secondary" href="https://github.com/fetachino/qnx-scheduloscope">View source</a>
+        </p>
+        <div class="facts">
+          <span><strong>v1.0.2</strong></span>
+          <span>Apache-2.0</span>
+          <span>Node 20.11+</span>
+          <span>QNX backend: build-ready, not executed</span>
+        </div>
+      </div>
+      <figure class="shot">
+        <a href="demo/motor-control.html"><img src="assets/report.png" alt="Scheduloscope 1.0.2 report for the motor-control example, showing a schedulable verdict, task set, response-time analysis, and simulated schedule."></a>
+        <figcaption>Generated from <code>examples/motor-control.yaml</code>. This is a model report, not a QNX measurement.</figcaption>
+      </figure>
+    </section>
+
+    <section class="grid" aria-label="What Scheduloscope does">
+      <article class="card">
+        <h2>Analyze</h2>
+        <p>Fixed-priority response-time analysis with QNX-specific blocking, priority inheritance, interrupt interference, and context-switch terms.</p>
+      </article>
+      <article class="card">
+        <h2>Simulate</h2>
+        <p>A deterministic discrete-event schedule with FIFO, round-robin, sporadic budgets, priority inversion, message inheritance, and ISR lanes.</p>
+      </article>
+      <article class="card">
+        <h2>Measure</h2>
+        <p>Generate a C harness for the same model, with a QNX backend for on-target measurement and a POSIX backend for host compilation and CI.</p>
+      </article>
+    </section>
+
+    <section class="panel split">
+      <div>
+        <h2>Two backends, one explicit boundary</h2>
+        <p>The analysis and simulation run on the host. The generated harness has two implementations with different evidence.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Backend</th><th scope="col">Purpose</th><th scope="col">Evidence</th></tr></thead>
+          <tbody>
+            <tr><td>QNX</td><td>On-target workload measurement with QNX scheduling and IPC</td><td>Written against the 8.0 API and source-reviewed; not built or run in this project</td></tr>
+            <tr><td>POSIX host</td><td>Compile and exercise the same harness logic in CI</td><td>Built and tested on Linux with GCC and sanitizers; best-effort scheduling</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="reports">
+      <h2>Reports</h2>
+      <p>Both reports are self-contained HTML generated by Scheduloscope 1.0.2.</p>
+      <ul class="links">
+        <li><a href="demo/motor-control.html">Motor control — inherited priorities</a><span>Schedulable baseline with priority inheritance.</span></li>
+        <li><a href="demo/motor-control-no-inherit.html">Motor control — no inheritance</a><span>The same design with the mutex protocol changed.</span></li>
+      </ul>
+    </section>
+
+    <section class="panel" id="docs">
+      <h2>Documentation</h2>
+      <ul class="links">
+        <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/model-reference.md">Model reference</a><span>Every field, default, and unit.</span></li>
+        <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/qnx-semantics.md">QNX semantics</a><span>What the model reproduces and where it stops.</span></li>
+        <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/analysis-method.md">Analysis method</a><span>The response-time equation and each term.</span></li>
+        <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/verification.md">Verification</a><span>Commands, test results, and the QNX gap.</span></li>
+        <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/demo-tour.md">Demo tour</a><span>Six steps from a clean clone.</span></li>
+        <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/README.md">README</a><span>Quick start, architecture, and limitations.</span></li>
+      </ul>
+    </section>
+
+    <section class="boundary">
+      <h2>What this project does not claim</h2>
+      <p><strong>No QNX SDP was available during verification.</strong> The QNX backend and image template are build-ready and source-reviewed, not compiled, booted, or measured on a target here. No QNX timing number is presented as a measurement. The host test suite and POSIX harness checks are real, and their limits are documented.</p>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <span>© 2026 Scheduloscope · Apache-2.0</span>
+    <span><a href="https://github.com/fetachino/qnx-scheduloscope">GitHub</a> · <a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/LICENSE">License</a></span>
+  </footer>
+</body>
+</html>

@@ -8,15 +8,17 @@
 [![QNX](https://img.shields.io/badge/QNX%20OS-8.0-red.svg)](docs/qnx-semantics.md)
 
 Scheduloscope is a design-time scheduling analyzer and deterministic simulator for QNX OS 8.0
-systems, plus a generator that turns the same model into a C workload you can run on a real
-QNX target to measure the numbers the model only estimated.
+systems, plus a generator that turns the same model into a C workload intended for measuring those
+estimates on a real QNX target once built with the QNX SDP.
 
 ![Scheduloscope report](assets/report.png)
 
-[Open the generated report](https://fetachino.github.io/qnx-scheduloscope/demo/motor-control.html) - one self-contained HTML file, no server, no build step.
+[Project site](https://fetachino.github.io/qnx-scheduloscope/) · [Open the generated report](https://fetachino.github.io/qnx-scheduloscope/demo/motor-control.html) — one self-contained HTML file, no server, no
+build step.
 
 Or take the [four-minute demo tour](docs/demo-tour.md): baseline, one attribute changed, deadline
-miss, the inversion in the chart, and how the generated harness measures it on the target.
+miss, the inversion in the chart, and how the generated harness is designed to measure it on the
+target.
 
 ---
 
@@ -39,9 +41,10 @@ the first trace. Scheduloscope attacks that gap:
 2. **Simulate** - a deterministic discrete-event model of QNX scheduling semantics that shows
    *when* it fails, not just whether: a Gantt chart of every context switch, every priority
    inversion, every sporadic budget exhaustion.
-3. **Measure** - generate a C harness for the same model that runs on the target with
+3. **Measure** - generate a C harness for the same model, intended to run on the target with
    `SCHED_FIFO` / `SCHED_RR` / `SCHED_SPORADIC`, `ClockCycles`, priority-inheriting mutexes and
-   real `ChannelCreate` message passing, then report measured worst-case response times.
+   real `ChannelCreate` message passing, and report measured worst-case response times once
+   executed.
 
 ## Why this is QNX-specific
 
@@ -208,8 +211,14 @@ make qnx            # nto/x86_64   (make qnx-arm for aarch64le)
 
 `make qnx-arm` builds only the AArch64 executable; the shipped `image.build.template` is an x86_64
 boot-image template and has no matching AArch64 startup/driver lines. The harness prints a table and
-writes JSON with maximum, mean and per-task miss counts, plus the platform it ran on. The same sources build on a normal Linux host through the POSIX backend,
-which is how the generated code is regression-tested in CI.
+writes JSON with maximum, mean and per-task miss counts, plus the platform it ran on.
+
+The same sources build on a normal Linux host through the POSIX backend.
+
+| Backend | Build | Purpose | Timing evidence |
+| --- | --- | --- | --- |
+| QNX | `qcc` with the QNX SDP | Intended on-target measurement | Not executed in this project; QNX scheduling applies only after execution on the target |
+| POSIX host | Host C compiler | Compile and exercise the harness logic in CI | Best-effort scheduling; not QNX evidence |
 
 ## Architecture
 
@@ -227,7 +236,7 @@ which is how the generated code is regression-tested in CI.
 ```
 
 The three consumers share one derived model, so the analysis, the simulation and the generated
-harness can never drift apart.
+harness start from the same inputs and are intended to stay consistent.
 
 ## Verification
 
@@ -244,13 +253,14 @@ paths under AddressSanitizer and UndefinedBehaviorSanitizer.
 | Simulator semantics (PI, PCP, RR, sporadic, ISR) | passing |
 | Report and SVG generation | passing |
 | Generated C harness | compiles with `gcc -Wall -Wextra -Wundef -Werror`, runs under Linux, and stops cleanly on a partial startup, a failed stop/join, or an RPC chain |
-| QNX API usage | reviewed call by call against the 8.0 reference pages (`docs/verification.md`) |
-| Generated C harness on QNX 8.0 | **not executed here** - the SDP needs a myQNX account and license |
+| QNX API usage | reviewed against the 8.0 reference pages (`docs/verification.md`) |
+| Generated C harness on QNX 8.0 | **not executed in this project** - the SDP requires a QNX account and license acceptance |
 
 Being explicit about that last row is part of the design. The QNX backend is written against the
-8.0 C library, builds with the same `Makefile` and `image.build.template` in the repository, and is
-labelled build-ready rather than verified. [docs/verification.md](docs/verification.md) has the
-full matrix, the exact commands, and what each row would need to move to *verified*.
+8.0 C library and ships with the same `Makefile` and `image.build.template` in the repository, but
+it has not been built or run on QNX in this project. It is labelled build-ready rather than
+verified. [docs/verification.md](docs/verification.md) has the full matrix, the exact commands,
+and what each row would need to move to *verified*.
 
 ## As a library
 
@@ -273,14 +283,13 @@ console.log(analysis.verdict, sim.contextSwitches, diagnostics.length);
 Every export is typed and the entry point re-exports the model types.
 
 ## Documentation
+- [Project site](https://fetachino.github.io/qnx-scheduloscope/) - landing page with the current report and demo links.
 - [Model reference](docs/model-reference.md) - every field, default and unit.
 - [QNX semantics](docs/qnx-semantics.md) - what the simulator reproduces and why, with the
   8.0 behaviour it mirrors.
 - [Analysis method](docs/analysis-method.md) - the response-time equation and each term.
 - [Verification](docs/verification.md) - the test matrix and the honest gaps.
 - [Demo tour](docs/demo-tour.md) - six steps from a clean clone, with the output of each one.
-- [Demo script](docs/demo-script.md) - the three-minute video walkthrough.
-- [Hackathon notes](docs/hackathon.md) - category, compliance checklist, what was built when.
 
 ## Repository layout
 
@@ -293,7 +302,9 @@ src/codegen/   QNX 8.0 harness generator and C templates
 src/cli/       command line interface
 tests/         unit and integration tests (node:test)
 examples/      annotated models
-docs/          reference documentation
+docs/          public reference documentation
+site/          sanitized GitHub Pages landing page
+scripts/       build, test and deployment scripts
 ```
 
 ## Limitations
