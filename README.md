@@ -160,7 +160,8 @@ The simulation of the same model over 20 ms shows 88 context switches and one 82
 correctly reported as *mitigated*: the logger holds `stateLock`, the safety thread blocks on it,
 the logger inherits priority 70 and finishes, and no deadline is missed.
 
-`examples/priority-inversion.yaml` - the same design with `protocol: none` on that mutex:
+`examples/priority-inversion.yaml` - the same controller with `protocol: none` on that mutex
+(and the service channel folded into the tasks, so the comparison is about the protocol):
 
 ```text
 motor-control-no-inheritance  unschedulable  |  4 tasks  |  worst slack -538us
@@ -217,7 +218,7 @@ harness with `gcc -Wall -Wextra` and runs it.
 
 | Area | Status |
 | --- | --- |
-| Parser, validator, units | 71 tests, passing |
+| Parser, validator, units, API | 71 tests, passing |
 | RTA against hand-computed cases | passing (see `tests/rta.test.ts`) |
 | Simulator semantics (PI, PCP, RR, sporadic, ISR) | passing |
 | Report and SVG generation | passing |
