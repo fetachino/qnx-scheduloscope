@@ -1,0 +1,89 @@
+# Scheduloscope example: a small motor-control system.
+#
+# Four periodic threads, one aperiodic logger, a single-threaded sensor server
+# and two mutexes. Priorities are assigned by hand the way they usually are on a
+# real QNX system: the safety loop on top, then control, then the planner, then
+# best-effort telemetry.
+schema: scheduloscope/v1
+name: motor-control
+description: >
+  Field-oriented motor control with a safety supervisor, a trajectory planner,
+  a sensor service thread and best-effort telemetry. Priorities reflect a
+  hand-tuned QNX design, not a rate-monotonic assignment.
+
+clock:
+  period: 1ms
+  ticks: 4
+
+cpu:
+  cores: 1
+  contextSwitch: 2us
+  privilegedPriorityCeiling: 63
+
+interrupts:
+  entryOverhead: 1us
+  sources:
+    - name: adc
+      period: 500us
+      service: 25us
+
+resources:
+  - name: stateLock
+    protocol: inherit
+  - name: i2cBus
+    protocol: protect
+    ceiling: 45
+
+channels:
+  - name: sensorHub
+    serverThreads: 1
+    basePriority: 12
+    handler:
+      - cpu: 90us
+
+tasks:
+  - name: safety
+    priority: 70
+    period: 2ms
+    deadline: 2ms
+    segments:
+      - cpu: 80us
+      - cs: { resource: stateLock, work: 40us }
+
+  - name: control
+    priority: 60
+    period: 1ms
+    deadline: 1ms
+    segments:
+      - cpu: 150us
+      - rpc: { channel: sensorHub }
+      - cpu: 90us
+      - cs: { resource: stateLock, work: 30us }
+
+  - name: planner
+    priority: 40
+    period: 5ms
+    deadline: 5ms
+    segments:
+      - cpu: 600us
+      - cs: { resource: i2cBus, work: 80us }
+
+  - name: telemetry
+    priority: 20
+    policy: rr
+    period: 20ms
+    deadline: 20ms
+    segments:
+      - cpu: 2500us
+
+  - name: logger
+    priority: 15
+    meanInterarrival: 15ms
+    deadline: 50ms
+    segments:
+      - cpu: 300us
+      - cs: { resource: stateLock, work: 100us }
+
+simulation:
+  seed: 424242
+  maxJobsPerTask: 200

@@ -1,0 +1,91 @@
+# A deliberately broken version of the motor controller.
+#
+# The only difference from motor-control.yaml is that the state mutex uses
+# PTHREAD_PRIO_NONE. Run `scheduloscope analyze` on it and compare: the
+# analysis refuses to promise a bound, and the simulator shows the logger
+# holding the lock while a middle-priority task preempts it, so the safety
+# loop misses its deadline. This is the classic Mars Pathfinder bug in QNX
+# terms, and it is exactly the failure mode PTHREAD_PRIO_INHERIT prevents.
+
+schema: scheduloscope/v1
+
+name: motor-control-no-inheritance
+description: >
+  Same workloads as motor-control.yaml, but stateLock disables priority
+  inheritance. The safety supervisor can be delayed by the logger while a
+  middle-priority thread runs, which is unbounded priority inversion.
+
+cpu:
+  cores: 1
+  contextSwitchUs: 2
+  privilegedPriorityCeiling: 63
+
+clock:
+  periodUs: 1000
+  roundRobinTimesliceTicks: 4
+
+interrupts:
+  entryOverheadUs: 2
+  sources:
+    - name: adc
+      period: 500us
+      service: 24us
+
+resources:
+  - name: stateLock
+    protocol: none
+
+channels:
+  - name: sensorHub
+    serverThreads: 1
+    basePriority: 45
+    handler:
+      - cpu: 40us
+
+tasks:
+  - name: safety
+    priority: 70
+    period: 2ms
+    deadline: 2ms
+    segments:
+      - cpu: 80us
+      - cs:
+          resource: stateLock
+          work: 40us
+      - cpu: 40us
+
+  - name: control
+    priority: 60
+    period: 1ms
+    deadline: 1ms
+    segments:
+      - cpu: 150us
+      - rpc:
+          channel: sensorHub
+          timeout: 2ms
+      - cpu: 120us
+      - cs:
+          resource: stateLock
+          work: 60us
+
+  - name: logger
+    priority: 15
+    period: 15ms
+    deadline: 50ms
+    segments:
+      - cs:
+          resource: stateLock
+          work: 900us
+      - cpu: 300us
+
+  - name: planner
+    priority: 40
+    period: 5ms
+    deadline: 5ms
+    segments:
+      - cpu: 700us
+
+simulation:
+  seed: 424242
+  durationUs: 60000
+

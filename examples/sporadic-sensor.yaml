@@ -1,0 +1,68 @@
+# Reading a sensor with SCHED_SPORADIC.
+#
+# The sensor thread must run when an event arrives, but it must not be able to
+# starve the control loop if events arrive in a burst. A sporadic budget of
+# 300us every 2ms caps it at 15% of the CPU: once the budget is gone the
+# kernel drops the thread to its low priority and a lower-priority background
+# thread takes over until the next replenishment.
+#
+# Try `scheduloscope simulate` with a shorter replenishment period to watch
+# the cap tighten, or delete the sporadic block to see the burst starve the
+# control loop.
+
+schema: scheduloscope/v1
+
+name: sporadic-sensor
+description: >
+  A sporadic sensor reader with a hard CPU cap, a control loop that must not
+  be starved, and a background logger that only runs on leftover budget.
+
+cpu:
+  cores: 1
+  contextSwitchUs: 2
+  privilegedPriorityCeiling: 63
+
+clock:
+  periodUs: 1000
+  roundRobinTimesliceTicks: 4
+
+interrupts:
+  entryOverheadUs: 2
+  sources:
+    - name: can
+      period: 250us
+      service: 18us
+
+tasks:
+  - name: control
+    priority: 60
+    period: 2ms
+    deadline: 2ms
+    segments:
+      - cpu: 300us
+      - cpu: 200us
+
+  - name: sensor
+    priority: 50
+    policy: sporadic
+    period: 2ms
+    deadline: 4ms
+    sporadic:
+      lowPriority: 10
+      budget: 300us
+      replenishPeriod: 2ms
+      maxReplenishments: 4
+    segments:
+      - cpu: 500us
+
+  - name: logger
+    priority: 15
+    period: 10ms
+    deadline: 40ms
+    segments:
+      - cpu: 400us
+
+simulation:
+  seed: 90210
+  durationUs: 40000
+
