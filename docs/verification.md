@@ -37,6 +37,22 @@ Result: **71 tests, 71 passing, 0 failing**, about 2 seconds.
 | `tests/cli.test.ts` | 8 | Exit codes 0/1/2, `--json`, `gen`, `init --force`, missing file handling. |
 | `tests/api.test.ts` | 1 | The whole pipeline through the public entry point. |
 
+## Scale
+
+`npm run bench` builds task sets with about 60% utilisation and distinct priorities, then times
+the analysis and a 100 ms simulation on the machine running it (Windows 11, Node 24):
+
+| Tasks | Derive ms | Analysis ms | Simulate ms | Context switches | Verdict |
+| --- | --- | --- | --- | --- | --- |
+| 50 | 0.5 | 3.0 | 13.8 | 460 | schedulable |
+| 100 | 0.1 | 1.6 | 13.1 | 811 | schedulable |
+| 150 | 0.1 | 2.1 | 19.2 | 1091 | schedulable |
+| 200 | 0.1 | 3.4 | 24.7 | 1325 | schedulable |
+
+These are host times for the tool, not timings of the modelled system. Sets larger than 255
+tasks are possible but must share priority levels; a tie is charged as interference and the
+verdict turns *inconclusive* rather than claiming a bound it cannot prove.
+
 ## Determinism
 
 Two `report` runs two seconds apart produce byte-identical HTML and Markdown apart from the
