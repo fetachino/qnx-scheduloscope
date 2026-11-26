@@ -22,9 +22,9 @@ ceilings, message-driven priority inheritance that stays sticky after `MsgReply(
 | New project, built during the submission period | yes | Initial commit is the first version of the source tree. |
 | Open source | yes | Apache-2.0, `LICENSE`. |
 | Public repository | yes | https://github.com/fetachino/qnx-scheduloscope |
-| Targets QNX 8.0 specifically | yes | `platform_qnx.c` uses `pthread_attr_setschedpolicy`, `SCHED_SPORADIC`, `ChannelCreate`, `_NTO_CHF_FIXED_PRIORITY`, `ClockCycles`; `Makefile` targets `nto/x86_64` and `nto/aarch64le` with `qcc`; `image.build` for `mkifs`. |
+| Targets QNX 8.0 specifically | yes | `platform_qnx.c` uses `pthread_attr_setschedpolicy`, `SCHED_SPORADIC`, `ChannelCreate`, `_NTO_CHF_FIXED_PRIORITY`, `ClockCycles`; `Makefile` targets `nto/x86_64` and `nto/aarch64le` with `qcc`; `image.build.template` for `mkifs`. |
 | Reproducible build | yes | `npm ci && npm test`, documented in the README. |
-| Automated tests | yes | 80 tests, `docs/verification.md`. |
+| Automated tests | yes | 89 tests, `docs/verification.md`. |
 | Documented results | yes | `docs/verification.md` separates host-verified, build-verified and not-run. |
 | Demo video under 3 minutes, public | **to record** | Script and shot list in `docs/demo-script.md`. |
 | Devpost submission | **not submitted** | Needs an explicit go-ahead; nothing here submits on its own. |
@@ -45,7 +45,7 @@ explains why no bound exists. No QNX installation, no account, no container.
 
 | Criterion | What this project offers |
 | --- | --- |
-| Technological implementation | A parser and validator with 20 typed diagnostics, a response-time solver with QNX blocking and interrupt terms, a deterministic discrete-event simulator with priority inheritance, priority ceilings, round robin, sporadic budgets, message passing and sticky priorities, an SVG Gantt renderer, and a C code generator with two backends. 80 tests, strict TypeScript. |
+| Technological implementation | A parser and validator with 36 stable diagnostic codes, a response-time solver with QNX blocking and interrupt terms, a deterministic discrete-event simulator with priority inheritance, priority ceilings, round robin, sporadic budgets, message passing and sticky priorities, an SVG Gantt renderer, and a C code generator with two backends. 89 tests, strict TypeScript. |
 | Design | One model feeds analysis, simulation and code generation, so the three cannot disagree. The CLI has stable exit codes and `--json`, the report is a single self-contained HTML file, and the generated harness compiles with `-Wall -Wextra` without warnings. |
 | Potential impact | Timing bugs are the expensive class of bug in embedded systems, and the design decisions that cause them are made before any hardware exists. The tool is useful on day one of a QNX project and does not require the target. |
 | Innovation and creativity | Host tools usually stop at a table of numbers. This one shows the mechanism in a schedule, then hands you the C to measure the same model on the target, which turns a design review into a closed loop. The QNX-specific parts - sticky message priority, PCP ceilings, sporadic budgets, IST priorities - are the ones generic RTA tools get wrong. |

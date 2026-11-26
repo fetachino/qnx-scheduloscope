@@ -5,9 +5,9 @@ the project adheres to Semantic Versioning.
 
 ## [1.0.1] - 2026-11-26
 
-A QNX 8.0 API review turned up several places where the code, not the documentation, was wrong.
-Everything below is a correction against the official 8.0 reference pages, listed one by one in
-`docs/verification.md`.
+A QNX 8.0 API review and an independent audit of the generated harness turned up places where the
+code, not the documentation, was wrong. Everything below is a correction against the official 8.0
+reference pages, listed one by one in `docs/verification.md`.
 
 ### Fixed
 
@@ -18,8 +18,28 @@ Everything below is a correction against the official 8.0 reference pages, liste
   65535; values above 32 are now an informational note that says so.
 - The generated QNX client called `MsgSend` with a `NULL` reply buffer while the server replies.
   It now passes a 64-byte reply buffer.
-- `image.build.template` named `startup-x86-64`; the binary is `startup-x86_64`. The template also
-  documents that a dynamically linked harness needs `libc.so`, so `qcc -static` is the simple path.
+- The QNX backend tested `SS_MAX_PRIORITY` without including the header that defines it, so the
+  `#if` silently evaluated to 0 and the priority-ability request was never compiled in. The value
+  lives in a generated `workload_config.h` now, both the workload and the QNX backend include it,
+  and the Makefile builds with `-Wundef` so this class of mistake fails the build.
+- `ss_thread_start` ignored the return codes of `pthread_attr_setschedpolicy` and
+  `pthread_attr_setschedparam`. On QNX a failure now stops the run with the thread, priority and
+  error instead of measuring a different system. The POSIX backend keeps its fallback but marks the
+  report `best-effort` and says why.
+- `image.build.template` named `startup-x86-64` (the binary is `startup-x86_64`), assumed a static
+  build that the Makefile does not produce, and had no writable `/tmp` for the report. The template
+  now copies `libc.so` and `libgcc_s.so`, creates an in-image `/tmp`, and the Makefile documents
+  the dynamic link.
+- Response time was measured from the moment a thread woke, hiding activation latency. It is now
+  measured from the nominal release, activation latency is reported separately, and the JSON says
+  exactly how response time is defined.
+- Interrupt sources were omitted from the harness without a word. `gen` now reports each source,
+  the harness prints a warning, and the JSON carries `model_includes_interrupts` and
+  `interrupts_reproduced`. The harness still does not run ISR/IST handlers; the documentation now
+  says to compare against the ISR column, not the R column.
+- The harness created channels and mutexes but never destroyed them, and a partial initialization
+  returned without tearing anything down. It now wakes and joins server threads, destroys channels
+  then mutexes, and writes no report when a thread could not be configured.
 - `ConnectDetach` was used where a channel had to be destroyed (fixed in 1.0.0's last commit, noted
   here for completeness).
 
@@ -31,8 +51,12 @@ Everything below is a correction against the official 8.0 reference pages, liste
 - The generated workload publishes `SS_MAX_PRIORITY`, and the QNX backend asks for
   `PROCMGR_AID_PRIORITY` when any thread needs a priority above 63, with a clear message when the
   process is not allowed to have it.
-- Six tests covering the sporadic equality rule, the replenishment note, the ability request, the
-  image build file and the reply buffer (80 in total).
+- Nine tests: the sporadic equality rule, the replenishment note, the ability request at 70 and its
+  absence at 60 (checked by preprocessing the generated QNX source with stub headers), the image
+  build file, the reply buffer, interrupt reporting, the response-time definition, teardown order
+  and the invalid-measurement path. CI also compiles the POSIX harness and its failure paths and
+  runs the teardown under sanitizers (89 tests in total).
+
 ## [1.0.0] - 2026-11-26
 
 First release, built for the QNX Everywhere Hackathon.

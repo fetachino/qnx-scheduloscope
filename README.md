@@ -138,7 +138,7 @@ unbounded inversion that misses, and a sporadic reader with a CPU budget.
 | `analyze` | Response-time analysis plus diagnostics. Exit 1 when the set is unschedulable. |
 | `simulate` | Deterministic simulation: per-task response times, inversions, misses. |
 | `report` | Markdown and a self-contained HTML report with an inline SVG Gantt chart. |
-| `gen` | QNX 8.0 measurement harness: `workload.h`, `harness.c`, `platform_qnx.c`, `platform_posix.c`, `Makefile`, `image.build`. |
+| `gen` | QNX 8.0 measurement harness: `workload.h`, `workload_config.h`, `harness.c`, `platform_qnx.c`, `platform_posix.c`, `Makefile`, `image.build.template`, `README.md`. |
 | `init` | Write a commented starter model. |
 
 Useful flags: `--json` for machine-readable output, `-d 200ms` for the window, `--seed` for the
@@ -230,22 +230,23 @@ harness can never drift apart.
 
 ## Verification
 
-Everything that can be checked on a host is checked on a host: 80 automated tests, a TypeScript
+Everything that can be checked on a host is checked on a host: 89 automated tests, a TypeScript
 build with `strict` and `noUncheckedIndexedAccess`, and a CI job that compiles the generated
-harness with `gcc -Wall -Wextra` and runs it.
+harness with `gcc -Wall -Wextra -Wundef -Werror`, runs it, and exercises its failure and teardown
+paths.
 
 | Area | Status |
 | --- | --- |
-| Parser, validator, units, API | 80 tests, passing |
+| Parser, validator, units, API | 89 tests, passing |
 | RTA against hand-computed cases | passing (see `tests/rta.test.ts`) |
 | Simulator semantics (PI, PCP, RR, sporadic, ISR) | passing |
 | Report and SVG generation | passing |
-| Generated C harness | compiles with `gcc -Wall -Wextra -Werror` and runs under Linux |
+| Generated C harness | compiles with `gcc -Wall -Wextra -Wundef -Werror`, runs under Linux, and fails cleanly when scheduling or a channel cannot be set up |
 | QNX API usage | reviewed call by call against the 8.0 reference pages (`docs/verification.md`) |
 | Generated C harness on QNX 8.0 | **not executed here** - the SDP needs a myQNX account and license |
 
 Being explicit about that last row is part of the design. The QNX backend is written against the
-8.0 C library, builds with the same `Makefile` and `image.build` in the repository, and is
+8.0 C library, builds with the same `Makefile` and `image.build.template` in the repository, and is
 labelled build-ready rather than verified. [docs/verification.md](docs/verification.md) has the
 full matrix, the exact commands, and what each row would need to move to *verified*.
 

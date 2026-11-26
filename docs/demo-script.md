@@ -22,8 +22,8 @@ video has to be public on YouTube.
 | 1:10 | Open `examples/priority-inversion.yaml`, run `analyze` | "Now the interesting part. Same design, one line changed: the mutex protocol is none instead of inherit. The analysis now fails: control misses by 538 microseconds, and the largest term is blocking, 900 microseconds." |
 | 1:30 | Run `simulate` on the broken model, show inversion lines | "The simulation shows the mechanism, not just the verdict. The logger holds the lock, a middle-priority thread preempts it, and the safety thread waits. That is the Mars Pathfinder bug, in QNX terms, caught in a design review instead of on a rover." |
 | 1:55 | Terminal: `scheduloscope gen examples/motor-control.yaml --out harness/` then `ls harness` | "The third piece closes the loop. The same model generates a C harness for QNX 8.0: threads with the real scheduling policies, mutexes with the real protocols, a real channel with server threads, and ClockCycles timestamps." |
-| 2:15 | Show `platform_qnx.c` briefly, then the Makefile | "It builds with the SDP: make qnx for x86_64, make qnx-arm for aarch64le, and there is an image.build to boot it under QEMU. Run it on the target and the report is measured numbers, not a model." |
-| 2:35 | Browser: GitHub repo, README, CI badge, test output | "Everything is open source, Apache 2.0. Seventy tests, a CI job that compiles the generated C with warnings as errors, and a documented boundary: the QNX half is build-ready, and the repository says exactly which commands close that gap." |
+| 2:15 | Show `platform_qnx.c` briefly, then the Makefile | "It builds with the SDP: make qnx for x86_64, make qnx-arm for aarch64le, and an image.build.template that mkifs can turn into a boot image. I have not built or booted it here; the repository says so. Run it on the target and the report is measured numbers, not a model." |
+| 2:35 | Browser: GitHub repo, README, CI badge, test output | "Everything is open source, Apache 2.0. Eighty-nine tests, a CI job that compiles the generated C with warnings as errors, and a documented boundary: the QNX half is build-ready, and the repository says exactly which commands close that gap." |
 | 2:50 | Title card with repo URL | "Scheduloscope. Find the timing bug before the hardware does." |
 
 ## Spoken script (for the voice-over)
@@ -51,10 +51,10 @@ video has to be public on YouTube.
 >
 > The third piece closes the loop. The same model generates a C harness for QNX 8.0: real
 > scheduling policies, real mutex protocols, a real channel with server threads, ClockCycles
-> timestamps. Make qnx for x86_64, make qnx-arm for aarch64le, and an image.build to boot it
-> under QEMU.
+> timestamps. Make qnx for x86_64, make qnx-arm for aarch64le, and an image.build.template
+> that mkifs can turn into a boot image. It is not built or booted here.
 >
-> Everything is Apache 2.0, seventy tests pass, CI compiles the generated C with warnings as
+> Everything is Apache 2.0, eighty-nine tests pass, CI compiles the generated C with warnings as
 > errors, and the repository is explicit about the one thing it cannot do here: without an SDP
 > license the QNX half is build-ready, not verified. The exact commands to finish it are in the
 > README.
