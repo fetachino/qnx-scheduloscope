@@ -2,7 +2,7 @@
 
 > Field-oriented motor control with a safety supervisor, a trajectory planner, a sensor service thread and best-effort telemetry. Priorities reflect a hand-tuned QNX design, not a rate-monotonic assignment.
 
-Generated 2026-11-26T20:28:49Z by Scheduloscope 1.0.0.
+Generated 2026-11-26T20:54:57Z by Scheduloscope 1.0.0.
 
 ## Verdict
 

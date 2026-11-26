@@ -92,10 +92,10 @@ Exactly one of `period`, `minInterarrival`, `meanInterarrival` must be present.
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `lowPriority` | 1..255 | required | `sched_ss_low_priority`: where the thread runs once the budget is exhausted. |
+| `lowPriority` | 1..252 | required | `sched_ss_low_priority`: where the thread runs once the budget is exhausted. Must be lower than the task priority. |
 | `budget` | duration | required | `sched_ss_init_budget`: CPU time per replenishment period. |
 | `replenishPeriod` | duration | required | `sched_ss_repl_period`. |
-| `maxReplenishments` | 1..63 | `3` | `sched_ss_max_repl`: how many budget replenishments may be pending. |
+| `maxReplenishments` | 1..65535 | `3` | `sched_ss_max_repl`: how many budget replenishments may be pending. `SS_REPL_MAX` is 65535 in QNX. |
 
 ### Segments
 

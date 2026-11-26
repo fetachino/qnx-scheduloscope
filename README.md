@@ -15,6 +15,9 @@ QNX target to measure the numbers the model only estimated.
 
 [Open the generated report](https://fetachino.github.io/qnx-scheduloscope/demo/motor-control.html) - one self-contained HTML file, no server, no build step.
 
+Or take the [four-minute demo tour](docs/demo-tour.md): baseline, one attribute changed, deadline
+miss, the inversion in the chart, and how the generated harness measures it on the target.
+
 ---
 
 ## The problem
@@ -123,9 +126,9 @@ tasks:
           work: 60us
 ```
 
-See [docs/model-reference.md](docs/model-reference.md) for every field, and the three examples in
-[`examples/`](examples) for a schedulable design, an unbounded priority inversion, and a sporadic
-reader with a CPU budget.
+See [docs/model-reference.md](docs/model-reference.md) for every field, and the four examples in
+[`examples/`](examples): a schedulable design, the same design with one attribute changed, an
+unbounded inversion that misses, and a sporadic reader with a CPU budget.
 
 ## Commands
 
@@ -159,6 +162,21 @@ control  fifo     60    364us  100us    124us   51us    639us   1ms    361us  me
 The simulation of the same model over 20 ms shows 88 context switches and one 82 us inversion,
 correctly reported as *mitigated*: the logger holds `stateLock`, the safety thread blocks on it,
 the logger inherits priority 70 and finishes, and no deadline is missed.
+
+`examples/motor-control-no-inherit.yaml` - the same file with one functional edit, `protocol: none`
+on `stateLock`:
+
+```text
+motor-control-no-inherit  inconclusive  |  5 tasks  |  68.8% utilization  |  worst slack 361us
+
+caveats
+  - Unbounded blocking: a shared mutex has priority inheritance disabled.
+```
+
+The utilisation and the response times are unchanged, because they are a lower bound; the verdict
+changed because the tool will not promise a bound it cannot prove. The simulation fills in what the
+bound cannot: safety is now blocked for 443us instead of 82us, its worst response grows from 206us
+to 567us, and the inversion is reported as unbounded rather than mitigated.
 
 `examples/priority-inversion.yaml` - the same controller with `protocol: none` on that mutex
 (and the service channel folded into the tasks, so the comparison is about the protocol):
@@ -212,17 +230,18 @@ harness can never drift apart.
 
 ## Verification
 
-Everything that can be checked on a host is checked on a host: 71 automated tests, a TypeScript
+Everything that can be checked on a host is checked on a host: 80 automated tests, a TypeScript
 build with `strict` and `noUncheckedIndexedAccess`, and a CI job that compiles the generated
 harness with `gcc -Wall -Wextra` and runs it.
 
 | Area | Status |
 | --- | --- |
-| Parser, validator, units, API | 71 tests, passing |
+| Parser, validator, units, API | 80 tests, passing |
 | RTA against hand-computed cases | passing (see `tests/rta.test.ts`) |
 | Simulator semantics (PI, PCP, RR, sporadic, ISR) | passing |
 | Report and SVG generation | passing |
 | Generated C harness | compiles with `gcc -Wall -Wextra -Werror` and runs under Linux |
+| QNX API usage | reviewed call by call against the 8.0 reference pages (`docs/verification.md`) |
 | Generated C harness on QNX 8.0 | **not executed here** - the SDP needs a myQNX account and license |
 
 Being explicit about that last row is part of the design. The QNX backend is written against the
@@ -256,7 +275,8 @@ Every export is typed and the entry point re-exports the model types.
   8.0 behaviour it mirrors.
 - [Analysis method](docs/analysis-method.md) - the response-time equation and each term.
 - [Verification](docs/verification.md) - the test matrix and the honest gaps.
-- [Demo script](docs/demo-script.md) - the three-minute walkthrough.
+- [Demo tour](docs/demo-tour.md) - six steps from a clean clone, with the output of each one.
+- [Demo script](docs/demo-script.md) - the three-minute video walkthrough.
 - [Hackathon notes](docs/hackathon.md) - category, compliance checklist, what was built when.
 
 ## Repository layout
