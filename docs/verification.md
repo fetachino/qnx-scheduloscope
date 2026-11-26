@@ -80,21 +80,27 @@ npx scheduloscope gen examples/sporadic-sensor.yaml --out /tmp/harness -d 3000ms
 docker run --rm -v "$PWD:/w" -w /w/harness gcc:13 sh -c "make && ./scheduloscope-harness -d 3000 -o report.json"
 ```
 
-Observed: `cc -O2 -g -Wall -Wextra -std=c11 -D_GNU_SOURCE` with **no warnings**, a clean run, and
-this report:
+Observed: the compiler runs with `-Wall -Wextra -Werror` and **no warnings**, the program runs
+clean, and it writes this report:
 
 ```json
 {
   "system": "sporadic-sensor",
-  "duration_us": 3000186,
+  "duration_us": 3000296,
   "platform": "posix",
   "tasks": [
-    {"name": "control", "activations": 1497, "completed": 1497, "min_us": 500, "mean_us": 508.5, "max_us": 1563, "misses": 0, "skipped": 2},
-    {"name": "sensor",  "activations": 1495, "completed": 1495, "min_us": 500, "mean_us": 504.6, "max_us": 1854, "misses": 0, "skipped": 3},
-    {"name": "logger",  "activations": 300,  "completed": 300,  "min_us": 400, "mean_us": 415.8, "max_us": 3330, "misses": 0, "skipped": 0}
+    {"name": "control", "activations": 1484, "completed": 1484, "min_us": 500, "mean_us": 515.1, "max_us": 4908, "misses": 5, "skipped": 11},
+    {"name": "sensor", "activations": 1484, "completed": 1484, "min_us": 500, "mean_us": 502.6, "max_us": 973, "misses": 0, "skipped": 12},
+    {"name": "logger", "activations": 300, "completed": 300, "min_us": 400, "mean_us": 408.4, "max_us": 1325, "misses": 0, "skipped": 0}
   ]
 }
 ```
+
+The five control misses in that run are the point of the whole exercise. Inside the container the
+harness cannot raise its threads to real-time priorities, so the control thread is descheduled by
+whatever else the host is doing and one job takes 4.9 ms against a 1 ms budget. On QNX the same
+code runs at priority 60 with `SCHED_FIFO`, and those five misses disappear. A host run measures
+the C, not the system.
 
 **These are host numbers, not QNX numbers.** Inside a container the harness cannot raise its
 threads to real-time priorities and prints:

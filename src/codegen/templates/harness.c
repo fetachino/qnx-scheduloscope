@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
             if (!arg) return 1;
             arg->channel = i;
             ss_thread thread;
-            if (ss_thread_start(&thread, def->name, def->base_priority, SS_POLICY_FIFO, 0, 0, 0, server_main, arg) != 0) {
+            if (ss_thread_start(&thread, def->name, def->base_priority, SS_POLICY_FIFO, 0, 0, 0, 0, server_main, arg) != 0) {
                 fprintf(stderr, "[scheduloscope] cannot start server for %s\n", def->name);
                 return 1;
             }
@@ -216,7 +216,7 @@ int main(int argc, char **argv) {
         arg->index = i;
         int policy = def->policy;
         if (ss_thread_start(&threads[i], def->name, def->priority, policy, def->sporadic_low_priority,
-                            def->sporadic_budget_us, def->sporadic_replenish_us, task_main, arg) != 0) {
+                            def->sporadic_budget_us, def->sporadic_replenish_us, def->sporadic_max_repl, task_main, arg) != 0) {
             fprintf(stderr, "[scheduloscope] cannot start %s\n", def->name);
             return 1;
         }

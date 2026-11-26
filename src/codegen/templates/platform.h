@@ -51,7 +51,8 @@ void ss_sleep_us(uint64_t us);
 
 int ss_thread_start(ss_thread *t, const char *name, int priority, int policy,
                     int sporadic_low_priority, uint64_t sporadic_budget_us,
-                    uint64_t sporadic_replenish_us, void (*entry)(void *), void *arg);
+                    uint64_t sporadic_replenish_us, int sporadic_max_repl,
+                    void (*entry)(void *), void *arg);
 int ss_thread_join(ss_thread *t);
 
 int ss_mutex_init(ss_mutex *m, int protocol, int ceiling);

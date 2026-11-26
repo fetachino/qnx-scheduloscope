@@ -74,7 +74,7 @@ static void *trampoline(void *raw) {
 
 int ss_thread_start(ss_thread *t, const char *name, int priority, int policy,
                     int sporadic_low_priority, uint64_t sporadic_budget_us,
-                    uint64_t sporadic_replenish_us, void (*entry)(void *), void *arg) {
+                    uint64_t sporadic_replenish_us, int sporadic_max_repl, void (*entry)(void *), void *arg) {
     start_args *args = (start_args *)malloc(sizeof(*args));
     if (!args) return -1;
     args->entry = entry;
@@ -99,7 +99,7 @@ int ss_thread_start(ss_thread *t, const char *name, int priority, int policy,
         param.sched_ss_init_budget.tv_nsec = (long)((sporadic_budget_us % 1000000ull) * 1000ull);
         param.sched_ss_repl_period.tv_sec = (time_t)(sporadic_replenish_us / 1000000ull);
         param.sched_ss_repl_period.tv_nsec = (long)((sporadic_replenish_us % 1000000ull) * 1000ull);
-        param.sched_ss_max_repl = 5;
+        param.sched_ss_max_repl = sporadic_max_repl > 0 ? sporadic_max_repl : 1;
     }
 
     pthread_attr_setschedpolicy(&attr, sched_policy);
@@ -185,7 +185,7 @@ int ss_channel_create(ss_channel *c, int fixed_priority) {
     /* Same process: connect to our own channel for MsgSend(). */
     impl->coid = ConnectAttach(0, 0, impl->chid, _NTO_SIDE_CHANNEL, 0);
     if (impl->coid < 0) {
-        ConnectDetach(impl->chid);
+        ChannelDestroy(impl->chid);
         free(impl);
         return -1;
     }
@@ -198,7 +198,7 @@ void ss_channel_destroy(ss_channel *c) {
     channel_impl *impl = (channel_impl *)c->impl;
     if (!impl) return;
     ConnectDetach(impl->coid);
-    ConnectDetach(impl->chid);
+    ChannelDestroy(impl->chid);
     free(impl);
     c->impl = NULL;
 }

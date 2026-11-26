@@ -69,10 +69,11 @@ static void *trampoline(void *raw) {
 
 int ss_thread_start(ss_thread *t, const char *name, int priority, int policy,
                     int sporadic_low_priority, uint64_t sporadic_budget_us,
-                    uint64_t sporadic_replenish_us, void (*entry)(void *), void *arg) {
+                    uint64_t sporadic_replenish_us, int sporadic_max_repl, void (*entry)(void *), void *arg) {
     (void)sporadic_low_priority;
     (void)sporadic_budget_us;
     (void)sporadic_replenish_us;
+    (void)sporadic_max_repl;
 
     start_args *args = (start_args *)malloc(sizeof(*args));
     if (!args) return -1;

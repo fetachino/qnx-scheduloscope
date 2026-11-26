@@ -109,6 +109,7 @@ export function emitWorkload(model: SystemModel, durationUs: Micros, unsupported
   out.push('    int sporadic_low_priority;');
   out.push('    unsigned sporadic_budget_us;');
   out.push('    unsigned sporadic_replenish_us;');
+  out.push('    int sporadic_max_repl;');
   out.push('    const ss_segment *segments;');
   out.push('    int segment_count;');
   out.push('} ss_task_def;');
@@ -188,6 +189,7 @@ function taskToC(task: TaskModel, index: number): string {
     String(task.sporadic?.lowPriority ?? 0),
     String(task.sporadic?.initBudgetUs ?? 0) + 'u',
     String(task.sporadic?.replenishPeriodUs ?? 0) + 'u',
+    String(task.sporadic?.maxReplenishments ?? 0),
     'ss_task_' + String(index) + '_segments',
     String(task.segments.length),
   ];
