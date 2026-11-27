@@ -18,7 +18,10 @@ Both QNX targets compile with `-std=c11 -D_QNX_SOURCE`. Under strict ISO C,
 
 `qnx-arm` builds only the AArch64 executable. `image.build.template` is an
 x86_64 boot image template; there is no matching AArch64 image template, so a
-board image needs its own startup and driver lines.
+board image needs its own startup and driver lines. The Scheduloscope repository
+also records a validated AArch64 QEMU boot through a community MIT BSP; that is
+runtime evidence, not an official QSTI image or a hardware-timing result:
+https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/verification.md.
 
 Copy `scheduloscope-harness` to the target and run it with the privileges that
 real-time priorities and priority inheritance require (root, or a process with
