@@ -429,6 +429,7 @@ export function renderHtml(bundle: ReportBundle): string {
 
   return '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    "<link rel=\"icon\" href=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1117'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%236ea8fe' stroke-width='5'/%3E%3Cpath d='M32 20v12l9 6' fill='none' stroke='%2356d364' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E\">" +
     '<meta name="description" content="' + escapeXml(model.name) + ' — model-based QNX OS 8.0 scheduling report from Scheduloscope.">' +
     '<meta name="color-scheme" content="dark">' +
     '<title>' + escapeXml(model.name) + ' — Scheduloscope</title>' + STYLE + '</head><body>' + body.join('') + '</body></html>\n';

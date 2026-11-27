@@ -2,7 +2,7 @@
 
 > The motor-control design with PTHREAD_PRIO_NONE on stateLock: no priority inheritance, so a low-priority holder can be preempted while a safety thread waits. Used to show what the analysis refuses to bound and what the schedule actually does.
 
-Generated 2026-11-27T01:07:19Z by Scheduloscope 1.0.2.
+Generated 2026-11-27T01:12:52Z by Scheduloscope 1.0.2.
 
 ## Verdict
 

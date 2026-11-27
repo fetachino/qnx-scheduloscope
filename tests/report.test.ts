@@ -118,6 +118,7 @@ test('html marks an unbounded blocking term as a lower bound, not a pass', () =>
 test('html states the model boundary and explains the analysis terms', () => {
   const html = renderHtml(bundle());
   assert.match(html, /This is a model, not a QNX measurement/);
+  assert.match(html, /<link rel="icon"/);
   assert.match(html, /R = C \+ B \+ I \+ ISR/);
   assert.match(html, /Worst-case response-time analysis/);
   assert.match(html, /Priority inheritance/);
