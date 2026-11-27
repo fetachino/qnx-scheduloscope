@@ -5,6 +5,11 @@ the project adheres to Semantic Versioning.
 
 ## [Unreleased]
 
+The README and QNX semantics reference now state the measurement boundary precisely: `gen` builds a
+target harness from the supplied durations and reports response times and deadline misses, but it
+does not infer WCET. This corrects wording that could have implied the generated harness discovers
+or invents the input durations.
+
 The report model-boundary callout now names QNX SDP 8.0.6, x86_64 KVM and AArch64 TCG
 evidence, and the repeat-run stress record, instead of referring only to Phase 3B. The callout still
 states that every number in the report is model output, not a target measurement.

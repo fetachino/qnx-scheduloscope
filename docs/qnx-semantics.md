@@ -114,5 +114,6 @@ design and not only its CPU demand.
 - Priority inheritance chains longer than a mutex cycle: the engine iterates the inheritance
   fixpoint up to twelve rounds and reports `W_PRIORITY_FIXPOINT` if it does not settle.
 - The exact cost of a `MsgSend()` crossing an address space, cache effects, and memory bandwidth.
-  Those are measured, not modelled; `gen` exists for exactly that reason.
+  Those are measured, not modelled. `gen` builds a target harness for the supplied durations and
+  reports response times and deadline misses; it is not a WCET measurement tool.
 

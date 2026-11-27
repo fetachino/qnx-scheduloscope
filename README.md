@@ -325,7 +325,7 @@ scripts/       build, test and deployment scripts
   scheduler are not modelled yet.
 - The simulation is one deterministic schedule, not a statistical envelope; the analysis is the
   worst case and the simulation is the sanity check.
-- Durations are inputs you measure, not something the tool invents. `gen` exists to measure them.
+- Durations are inputs you measure, not something the tool invents. `gen` builds a target harness that runs the same workload and measures the resulting response times and deadline misses; it does not infer WCET.
 
 ## License
 
