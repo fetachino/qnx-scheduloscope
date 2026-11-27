@@ -16,7 +16,7 @@ tours the same evidence; the video adds no measurement beyond what is recorded h
 | C compiler | `gcc 13` for the documented container example; Debian `gcc 12` (bookworm) for the 52-check harness and the QNX preprocessing tests |
 | Docker | 29.9.2 |
 | QNX SDP | 8.0.6 Stable (8.0 Build 141), installed at `D:/qnx800`; QNX GCC 12.2.0 |
-| QEMU | 8.2.2 under WSL Ubuntu 24.04; QNX guest runs with `-accel tcg -cpu max` |
+| QEMU | 8.2.2 under WSL Ubuntu 24.04; x86_64 TCG with `-cpu max`; AArch64 with `-M virt,gic-version=3 -cpu cortex-a72` |
 
 ## Automated tests
 
@@ -300,11 +300,13 @@ installation.
 | QNX SDP | 8.0.6 Stable (8.0 Build 141), installed at `D:/qnx800` |
 | QNX compiler | GCC 12.2.0 for `gcc_ntox86_64` and `gcc_ntoaarch64le` |
 | Host | Windows 11 Home 10.0.26300; WSL Ubuntu 24.04 for QEMU |
-| QEMU | 8.2.2 under WSL, `-accel tcg -cpu max`, one vCPU |
+| QEMU | 8.2.2 under WSL; x86_64 TCG `-cpu max`; AArch64 `-M virt,gic-version=3 -cpu cortex-a72`; one vCPU |
 | x86_64 binary | `scheduloscope-harness`, 71,760 bytes, ELF64 PIE, AMD x86-64 |
-| AArch64 binary | `scheduloscope-harness-arm`, 72,720 bytes, ELF64 PIE, AArch64 |
-| Native runtime | QNX 8.0.0 guest, one processor, JSON `"platform": "qnx"` |
-| Standalone image | 4,739,140-byte BIOS IFS; 11,362,304-byte boot partition; 11,362,816-byte disk |
+| AArch64 binary | `scheduloscope-harness`, 72,728 bytes, ELF64 PIE, AArch64 |
+| x86_64 runtime | QNX 8.0.0 guest, one processor, JSON `"platform": "qnx"` |
+| AArch64 runtime | QNX 8.0.0 guest, one processor, JSON `"platform": "qnx"` |
+| x86_64 standalone image | 4,739,140-byte BIOS IFS; 11,362,304-byte boot partition; 11,362,816-byte disk |
+| AArch64 image | 24,581,820-byte community-BSP IFS with Q-Boot |
 
 ### Toolchain and ELF evidence
 
@@ -406,28 +408,52 @@ The QEMU target startup was attempted separately. QSC lists `com.qnx.qnx800.targ
 and `virtio.devc` dependencies. No partial package was installed and the AArch64 `boot/sys`
 directory is unchanged. No credentials or licence values are recorded here.
 
-### AArch64 runtime gap
+### AArch64 native runtime (community QEMU BSP)
 
-The AArch64 compiler and harness binary are present, but the installed SDP has no AArch64
-`startup-qemu-virt` or equivalent BSP startup:
+The installed SDP still has no AArch64 `startup-qemu-virt`, and the official QSTI AArch64 package
+remains behind the authenticated QSC session. To test the generated AArch64 harness itself, the
+public MIT-licensed [`joexue/qemu-virt`](https://github.com/joexue/qemu-virt) BSP (commit
+`01437f2`) was built with the same SDP. That BSP supplies the AArch64 `startup-qemu-virt` source
+and a 336-byte Q-Boot BIOS that loads an IFS at `0x40200000`.
 
-```text
-target/qnx/aarch64le/boot/sys: binary.boot, binary64k.boot, elf.boot, elf64k.boot, kdumper,
-libmod_contextid.a, libmod_gicv2.a, libmod_gicv3.a, procnto-smp-instr, raw.boot, raw64k.boot,
-srec.boot, srec64k.boot, uefi.boot
+The AArch64 harness was staged in the BSP image and run on QEMU 8.2.2:
+
+```sh
+qemu-system-aarch64 -M virt,gic-version=3 -cpu cortex-a72 -m 512M -nographic \
+  -nic none -bios qemu-virt.bios \
+  -device loader,file=ifs-qemu-virt.bin,addr=0x40200000,force-raw=true
 ```
 
-Only `startup-apic` and `startup-x86` are installed for x86_64. An AArch64 `mkqnximage` attempt
-failed at `output/build/ifs.build:23 Host file 'startup-qemu-virt' not available`. The QSTI
-QEMU package that may supply the matching startup is behind the authenticated QSC session above.
-AArch64 remains compile-only; no AArch64 QNX runtime is claimed.
+The guest booted QNX, the 30 s harness executed, and it emitted a complete JSON report. The captured
+run is in [`docs/qnx-aarch64-boot.txt`](qnx-aarch64-boot.txt); the JSON alone is in
+[`docs/qnx-aarch64-report.json`](qnx-aarch64-report.json). Key fields:
+
+```json
+{
+  "system": "motor-control",
+  "duration_us": 30002245,
+  "platform": "qnx",
+  "scheduling": "enforced",
+  "interrupts_reproduced": false
+}
+```
+
+This is real QNX AArch64 execution of the generated harness, but the boot path is a **community BSP
+and Q-Boot loader**, not the official QSTI image. The guest banner reports QNX 8.0.0; the build
+toolchain is the installed QNX SDP 8.0.6. It is one vCPU under TCG, the workload busy-spins, and the
+observed misses are severe (for example, control reports 29,900 deadline misses). Those numbers are
+**not** a schedulability or hardware-latency result. They show that the AArch64 binary, its dynamic
+loader path, QNX scheduling, and the JSON path all execute.
+
+What remains is the **official QSTI AArch64 package**, not AArch64 runtime itself.
 
 ### Remaining gaps
 
 - **QSTI authentication:** the QEMU package download still requires an authenticated QSC session;
-  it was not bypassed and no account data was entered.
-- **AArch64 runtime:** no matching AArch64 startup/BSP is installed, so only compilation is
-  validated.
+  it was not bypassed and no account data was entered. Both x86_64 standalone boot and AArch64
+  community-BSP boot worked without QSTI, but the official QSTI image itself remains unavailable.
+- **Official AArch64 QSTI target:** AArch64 runtime is validated through the community BSP above;
+  the official QSTI AArch64 package is still behind the same authenticated session.
 - **Hardware-level timing:** no physical QNX board was available. All timing numbers come from a
   one-vCPU QEMU guest, most recently under TCG.
 - **ISR/IST interference:** the harness measures threads, not interrupt handlers;
@@ -435,9 +461,9 @@ AArch64 remains compile-only; no AArch64 QNX runtime is claimed.
 - **KVM:** the current QNX guest hangs under KVM in this environment, so TCG is the recorded
   runtime path. This is not presented as a hardware result either way.
 
-The earlier blockers that are now closed: QNX SDP installation, x86_64 native execution, and
-standalone BIOS IFS boot packaging. The image is not merely built; it is the disk that produced
-the JSON table above.
+The earlier blockers that are now closed: QNX SDP installation, x86_64 native execution,
+standalone BIOS IFS boot packaging, and AArch64 native execution through a community QEMU BSP. The
+x86_64 image is not merely built; it is the disk that produced the JSON table above.
 
 
 ## Reproducing all of it
@@ -483,4 +509,34 @@ Then, from WSL:
 ```sh
 qemu-system-x86_64 -accel tcg -cpu max -m 512M -smp 1 -nographic \
   -boot c -drive file=disk-test,format=raw,if=ide -no-reboot
+```
+
+AArch64 runtime (community BSP; not the shipped x86_64 template):
+
+```sh
+git clone https://github.com/joexue/qemu-virt
+cd qemu-virt
+git checkout 01437f2
+source ~/qnx800/qnxsdp-env.sh
+make
+```
+
+Add the generated harness to `install/aarch64le/usr/bin/scheduloscope-harness`, then add these lines
+to the `qemu-virt.build` startup script after `waitfor /dev/ser1`:
+
+```text
+display_msg "Running Scheduloscope AArch64 harness"
+/usr/bin/scheduloscope-harness -o /dev/shmem/aarch64-report.json
+display_msg "Scheduloscope JSON:"
+cat /dev/shmem/aarch64-report.json
+display_msg "Scheduloscope harness finished"
+```
+
+Add `/usr/bin/scheduloscope-harness=scheduloscope-harness` to the image entries and run `make` again.
+Then boot from WSL:
+
+```sh
+qemu-system-aarch64 -M virt,gic-version=3 -cpu cortex-a72 -m 512M -nographic \
+  -nic none -bios qemu-virt.bios \
+  -device loader,file=ifs-qemu-virt.bin,addr=0x40200000,force-raw=true
 ```

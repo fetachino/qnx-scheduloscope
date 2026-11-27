@@ -119,7 +119,7 @@
     <section class="panel" aria-labelledby="about-title">
       <h2 id="about-title">What the video covers</h2>
       <p>The first half is design-time work: parse the model, run response-time analysis, show the 361 µs worst-case slack, then remove priority inheritance and watch the control task miss by 538 µs. The simulation exposes the mechanism — a 900 µs critical section, a middle-priority thread, and four inversions.</p>
-      <p>The second half is the target loop: generated QNX C, the SDP build, a standalone QNX6 BIOS image, and a QEMU guest that reports <code>platform: qnx</code> and <code>scheduling: enforced</code>. The close names the gaps rather than rounding them away.</p>
+      <p>The second half is the target loop: generated QNX C, the SDP build, a standalone x86_64 QNX6 BIOS image and an AArch64 community-BSP image, and QEMU guests that report <code>platform: qnx</code> and <code>scheduling: enforced</code>. The close names the gaps rather than rounding them away.</p>
       <ul class="chapters" aria-label="Video chapters">
         <li><time>0:00</time><span>Title</span></li>
         <li><time>0:17</time><span>The model</span></li>
@@ -134,7 +134,7 @@
     </section>
     <section class="boundary" aria-labelledby="boundary-title">
       <h2 id="boundary-title">What the QNX evidence is — and is not</h2>
-      <p><strong>The x86_64 harness was compiled with QNX SDP 8.0.6 / qcc 12.2.0, packaged into its own QNX6 BIOS image, and booted in QEMU TCG on one vCPU.</strong> That is runtime evidence in an emulator, not a hardware timing measurement. AArch64 runtime, QSTI package installation, and hardware-level timing remain explicitly open. The analytical and simulated numbers in the first half are model outputs, not target traces.</p>
+      <p><strong>The x86_64 harness was compiled with QNX SDP 8.0.6 / qcc 12.2.0, packaged into its own QNX6 BIOS image, and booted in QEMU TCG on one vCPU.</strong> That is runtime evidence in an emulator, not a hardware timing measurement. The AArch64 harness also booted and wrote JSON through a public community BSP and Q-Boot image. QSTI package installation, the official AArch64 QSTI target, and hardware-level timing remain explicitly open. The analytical and simulated numbers in the first half are model outputs, not target traces.</p>
     </section>
   </main>
   <footer class="wrap">

@@ -210,10 +210,13 @@ make qnx            # nto/x86_64   (make qnx-arm for aarch64le)
 ./scheduloscope-harness -d 5000 -o report.json
 ```
 
-`make qnx-arm` builds only the AArch64 executable; the shipped `image.build.template` is an x86_64
-BIOS boot-image template and has no matching AArch64 startup/driver lines. The x86_64 template is a
-standalone IFS image: `mkifs`, `mkqnx6fsimg` and `diskimage` turn it into a bootable QNX6 disk, and
-that disk was booted in QEMU to produce the native JSON in [docs/verification.md](docs/verification.md).
+`make qnx-arm` builds the AArch64 executable; the shipped `image.build.template` remains an x86_64
+BIOS boot-image template and has no matching AArch64 startup/driver lines. For AArch64 runtime
+evidence the harness was added to a community QEMU BSP image (MIT-licensed `joexue/qemu-virt`,
+Q-Boot loader) and booted under `qemu-system-aarch64`; [docs/verification.md](docs/verification.md)
+records that path separately. The x86_64 template is a standalone IFS image: `mkifs`,
+`mkqnx6fsimg` and `diskimage` turn it into a bootable QNX6 disk, and that disk was booted in QEMU to
+produce the native JSON.
 The harness prints a table and writes JSON with maximum, mean and per-task miss counts, plus the
 platform it ran on.
 
@@ -258,14 +261,16 @@ paths under AddressSanitizer and UndefinedBehaviorSanitizer.
 | Report and SVG generation | passing |
 | Generated C harness | compiles with `gcc -Wall -Wextra -Wundef -Werror`, runs under Linux, and stops cleanly on a partial startup, a failed stop/join, or an RPC chain |
 | QNX API usage | reviewed against the 8.0 reference pages (`docs/verification.md`) |
-| Generated C harness on QNX 8.0 | **built with QNX SDP 8.0.6 and run natively** on x86_64 in QEMU; AArch64 is compile-only |
+| Generated C harness on QNX 8.0 | **built with QNX SDP 8.0.6 and run natively** on x86_64 and AArch64 in QEMU; AArch64 uses a community BSP and Q-Boot |
 
-The QNX backend was compiled with `qcc` 12.2.0 for x86_64 and AArch64. The x86_64 binary was
-packaged into a standalone BIOS IFS, booted from its own QNX6 disk in QEMU, and wrote JSON with
-`"platform": "qnx"` and `"scheduling": "enforced"`. AArch64 is compile-only: the installed SDP has
-no matching AArch64 startup, and the QSTI QEMU package needs an authenticated QSC session.
-[docs/verification.md](docs/verification.md) records the exact commands, the native JSON, the
-single-vCPU TCG caveat, and the explicitly open gaps (QSTI, AArch64 runtime, hardware timing).
+The QNX backend was compiled with `qcc` 12.2.0 for x86_64 and AArch64, and both binaries ran in a
+QNX 8.0 guest. The x86_64 binary was packaged into a standalone BIOS IFS, booted from its own QNX6
+disk in QEMU, and wrote JSON with `"platform": "qnx"` and `"scheduling": "enforced"`. The AArch64
+binary ran the same 30 s harness through the community BSP and Q-Boot path, also writing
+`"platform": "qnx"`; the installed SDP still has no official AArch64 startup, and the official QSTI
+QEMU package needs an authenticated QSC session. [docs/verification.md](docs/verification.md)
+records the exact commands, both JSON results, the single-vCPU TCG caveat, and the explicitly open
+gaps (QSTI authentication, official AArch64 QSTI target, hardware timing).
 
 ## As a library
 

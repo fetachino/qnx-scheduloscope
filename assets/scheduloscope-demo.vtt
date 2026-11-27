@@ -85,20 +85,20 @@ The same model generates a C harness for QNX 8.0: real scheduling policies, real
 Make qnx builds x86_64; make qnx-arm builds AArch64.
 
 22
-00:01:58.160 --> 00:02:01.199
-Phase 3B installed QNX SDP 8.0.6.
+00:01:58.160 --> 00:02:00.600
+QNX runs on both targets now.
 
 23
-00:02:01.199 --> 00:02:13.629
-The x86_64 harness compiled with qcc, booted from its own QNX6 BIOS image in QEMU, and reported platform qnx, with scheduling enforced.
+00:02:00.600 --> 00:02:10.700
+x86_64 boots from its own BIOS IFS. AArch64 boots through a public MIT-licensed BSP and Q-Boot image, and the same generated harness writes platform qnx on both.
 
 24
-00:02:13.629 --> 00:02:20.996
-That is QEMU TCG, one vCPU: runtime evidence, not a hardware timing measurement.
+00:02:10.700 --> 00:02:19.600
+These are QEMU TCG runs on one vCPU: runtime evidence, not hardware latency.
 
 25
-00:02:20.996 --> 00:02:26.060
-AArch64 runtime and QSTI packages remain explicit gaps.
+00:02:19.600 --> 00:02:26.060
+Official QSTI and physical-board timing remain open.
 
 26
 00:02:26.960 --> 00:02:28.689

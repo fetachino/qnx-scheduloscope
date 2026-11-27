@@ -13,8 +13,8 @@ priority-inversion demo now describes its actual four-task workload. Unbounded b
 as a lower bound rather than a deadline pass in both HTML and CLI output. Host suite is 103 tests
 (99 passing, 4 QNX-preprocessing skips without `gcc`). No scheduler semantics changed. The report's
 QNX boundary text now points to the Phase 3B native QEMU evidence instead of claiming no QNX SDP was
-available. A 2:43 narrated demo is published with the site; it labels the QNX run as QEMU TCG
-evidence and repeats the AArch64, QSTI and hardware-timing gaps.
+available. A 2:43 narrated demo is published with the site; it labels the QNX runs as QEMU TCG
+evidence and names the remaining official QSTI and hardware-timing gaps.
 
 Phase 3B installed QNX SDP 8.0.6 and validated the native path: `qcc` 12.2.0 built the harness for
 x86_64 and AArch64; the x86_64 binary ran on a one-vCPU QNX 8.0 QEMU guest and wrote a JSON report
@@ -22,9 +22,16 @@ with `"platform": "qnx"`. The generated `image.build.template` now builds a stan
 (`[image=8m]`, `[virtual=x86_64,bios] .bootstrap`) with the full trusted `/system/lib` dependency
 chain; `mkqnx6fsimg` and `diskimage` turned it into its own QNX6 boot partition, and that disk was
 booted under QEMU TCG and produced the report. The QSTI QEMU package stayed unavailable because its
-download requires an authenticated QSC session; AArch64 remains compile-only for lack of a matching
-startup/BSP, and no hardware board was available. The native run is not a hardware latency claim;
-see `docs/verification.md`.
+download requires an authenticated QSC session; at that point AArch64 remained compile-only for
+lack of a matching startup/BSP, and no hardware board was available. The native run is not a
+hardware latency claim; see `docs/verification.md`.
+
+A follow-up closed the AArch64 runtime gap with the public MIT-licensed `joexue/qemu-virt` BSP and
+its Q-Boot loader, built with the same SDP. The generated AArch64 harness booted on QEMU
+`virt,gic-version=3`, ran its 30 s workload, and wrote JSON with `"platform": "qnx"` and
+`"scheduling": "enforced"`. This is community-BSP runtime evidence, not the official QSTI image;
+the QSTI download still requires an authenticated session, and no hardware timing claim is made.
+The boot log and JSON are in `docs/qnx-aarch64-boot.txt` and `docs/qnx-aarch64-report.json`.
 
 Phase 3 source and build-configuration validation against the QNX SDP 8.0 reference. No SDP was
 installed, so this entry records corrections and tests only; it does not claim a native build,

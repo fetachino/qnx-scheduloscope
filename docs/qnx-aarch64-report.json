@@ -1,0 +1,16 @@
+{
+  "system": "motor-control",
+  "duration_us": 30002245,
+  "platform": "qnx",
+  "scheduling": "enforced",
+  "response_time": "completion minus nominal release; includes activation latency, execution and blocking",
+  "model_includes_interrupts": true,
+  "interrupts_reproduced": false,
+  "tasks": [
+    {"name": "safety", "activations": 14986, "completed": 14986, "min_us": 461, "mean_us": 1260.2, "max_us": 4988, "max_activation_latency_us": 4766, "mean_activation_latency_us": 1011.2, "misses": 10, "skipped": 14, "deadline_misses": 24},
+    {"name": "control", "activations": 14435, "completed": 14435, "min_us": 464, "mean_us": 1673.5, "max_us": 6207, "max_activation_latency_us": 4435, "mean_activation_latency_us": 1145.6, "misses": 14334, "skipped": 15566, "deadline_misses": 29900},
+    {"name": "planner", "activations": 5991, "completed": 5991, "min_us": 1093, "mean_us": 2743.5, "max_us": 7424, "max_activation_latency_us": 6007, "mean_activation_latency_us": 1471.8, "misses": 9, "skipped": 9, "deadline_misses": 18},
+    {"name": "telemetry", "activations": 1500, "completed": 1500, "min_us": 3892, "mean_us": 6483.0, "max_us": 9888, "max_activation_latency_us": 6857, "mean_activation_latency_us": 2939.7, "misses": 0, "skipped": 0, "deadline_misses": 0},
+    {"name": "logger", "activations": 1624, "completed": 1624, "min_us": 966, "mean_us": 3741.8, "max_us": 12220, "max_activation_latency_us": 9429, "mean_activation_latency_us": 2640.4, "misses": 0, "skipped": 0, "deadline_misses": 0}
+  ]
+}
