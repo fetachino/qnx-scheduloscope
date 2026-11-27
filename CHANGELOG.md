@@ -5,6 +5,14 @@ the project adheres to Semantic Versioning.
 
 ## [Unreleased]
 
+Phase 4 interface and demo polish. The landing page now guides a first-time reader through three
+reports, names the model/hardware boundary, and links each claim to a runnable example. Generated
+reports gained a verdict explanation, task cards, an RTA walkthrough, a timeline table alternative,
+inversion and miss tables, a glossary, accessible landmarks and a mobile section nav. The
+priority-inversion demo now describes its actual four-task workload. Unbounded blocking is labelled
+as a lower bound rather than a deadline pass in both HTML and CLI output. Host suite is 102 tests
+(98 passing, 4 QNX-preprocessing skips without `gcc`). No scheduler semantics changed.
+
 Phase 3 source and build-configuration validation against the QNX SDP 8.0 reference. No SDP was
 installed, so this entry records corrections and tests only; it does not claim a native build,
 image, boot or QNX timing.

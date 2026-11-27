@@ -18,7 +18,7 @@ import type { Diagnostic } from '../core/diagnostics.js';
 import { parseModel } from '../core/parse.js';
 import { formatDuration, parseDuration } from '../core/units.js';
 import { validateModel } from '../core/validate.js';
-import { allDiagnostics, percent, renderHtml, renderMarkdown, summarize, type ReportBundle } from '../report/report.js';
+import { allDiagnostics, hasUnboundedBlocking, percent, renderHtml, renderMarkdown, summarize, type ReportBundle } from '../report/report.js';
 import { simulate } from '../sim/engine.js';
 import { TOOL_VERSION } from '../version.js';
 
@@ -182,7 +182,8 @@ function verdictLine(bundle: ReportBundle): string {
         : yellow('inconclusive');
   return (
     bold(bundle.model.name) + '  ' + badge + dim('  ·  ') + String(summary.tasks) + ' tasks' + dim('  ·  ') +
-    percent(summary.utilization) + ' utilization' + dim('  ·  ') + 'worst slack ' + formatDuration(summary.worstSlackUs) +
+    percent(summary.utilization) + ' utilization' + dim('  ·  ') +
+    (summary.verdict === 'inconclusive' ? 'smallest reported slack ' : 'worst slack ') + formatDuration(summary.worstSlackUs) +
     dim('  ·  ') + 'hyperperiod ' + formatDuration(bundle.derived.hyperperiodUs)
   );
 }
@@ -199,7 +200,13 @@ function rtaTable(bundle: ReportBundle): string[] {
     formatDuration(task.responseUs),
     formatDuration(task.deadlineUs),
     formatDuration(task.slackUs),
-    task.deadlineMet === null ? 'n/a' : task.deadlineMet ? green('met') : red('MISS'),
+    task.deadlineMet === null
+      ? 'n/a'
+      : task.deadlineMet === false
+        ? red('MISS')
+        : hasUnboundedBlocking(task)
+          ? yellow('lower bound')
+          : green('met'),
   ]);
   return columns(
     ['task', 'policy', 'pri', 'C', 'B', 'I', 'ISR', 'R', 'D', 'slack', 'result'],

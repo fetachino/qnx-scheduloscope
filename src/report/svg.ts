@@ -118,7 +118,12 @@ export function renderGantt(sim: SimResult, options: GanttOptions = {}): string 
 
   return (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height +
-    '" width="100%" style="height:auto;display:block" role="img" aria-label="Simulated scheduler timeline">' +
+    '" width="100%" style="height:auto;display:block" role="img" aria-labelledby="ss-gantt-title ss-gantt-desc">' +
+    '<title id="ss-gantt-title">Simulated scheduler timeline</title>' +
+    '<desc id="ss-gantt-desc">Lane-by-lane schedule for the first ' + formatDuration(end - start) +
+    ' of a ' + formatDuration(sim.horizonUs) + ' simulation. ' + laneOrder.length +
+    ' lanes: ' + laneOrder.map((lane) => escapeXml(laneLabel(lane))).join(', ') + '. ' +
+    'Bars show CPU, critical-section, server-call, interrupt, and kernel time. This is model output, not a hardware measurement.</desc>' +
     children.join('') + '</svg>'
   );
 }

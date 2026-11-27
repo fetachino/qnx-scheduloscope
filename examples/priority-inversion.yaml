@@ -1,18 +1,20 @@
-# A deliberately broken version of the motor controller.
+# A deliberately broken, four-task variant of the motor controller.
 #
-# The only difference from motor-control.yaml is that the state mutex uses
-# PTHREAD_PRIO_NONE. Run `scheduloscope analyze` on it and compare: the
-# analysis refuses to promise a bound, and the simulator shows the logger
-# holding the lock while a middle-priority task preempts it, so the safety
-# loop misses its deadline. This is the classic Mars Pathfinder bug in QNX
-# terms, and it is exactly the failure mode PTHREAD_PRIO_INHERIT prevents.
+# Compared with motor-control.yaml it omits telemetry and the sensor service
+# channel, runs the logger periodically, and gives the logger a 900us stateLock
+# critical section with PTHREAD_PRIO_NONE. Run `scheduloscope analyze` on it
+# and compare: the analysis refuses a finite bound, and the simulator shows the
+# logger holding the lock while a middle-priority task preempts it, so control
+# misses its deadline. This is the classic Mars Pathfinder bug in QNX terms,
+# and it is the failure mode PTHREAD_PRIO_INHERIT prevents.
 
 schema: scheduloscope/v1
 
 name: motor-control-no-inheritance
 description: >
-  Same workloads as motor-control.yaml, but stateLock disables priority
-  inheritance. The safety supervisor can be delayed by the logger while a
+  A deliberately broken four-task variant. Telemetry and the sensor channel are
+  omitted, the logger runs periodically, and its 900us stateLock critical section
+  disables priority inheritance. Control can be delayed by the logger while a
   middle-priority thread runs, which is unbounded priority inversion.
 
 cpu:

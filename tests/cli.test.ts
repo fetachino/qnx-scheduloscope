@@ -27,6 +27,13 @@ test('analyze prints a verdict table for the example model', () => {
   assert.match(run.out, /result/);
 });
 
+test('analyze labels unbounded blocking as a lower bound, not a pass', () => {
+  const run = cli(['analyze', 'examples/motor-control-no-inherit.yaml']);
+  assert.equal(run.code, 0, run.err);
+  assert.match(run.out, /smallest reported slack/);
+  assert.match(run.out, /lower bound/);
+});
+
 test('analyze --json emits machine-readable output', () => {
   const run = cli(['analyze', 'examples/motor-control.yaml', '--json']);
   assert.equal(run.code, 0, run.err);

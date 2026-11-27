@@ -42,16 +42,16 @@ npx scheduloscope analyze examples/motor-control-no-inherit.yaml
 ```
 
 ```text
-motor-control-no-inherit  inconclusive  ·  5 tasks  ·  68.8% utilization  ·  worst slack 361us
+motor-control-no-inherit  inconclusive  ·  5 tasks  ·  68.8% utilization  ·  smallest reported slack 361us
 
 caveats
   · Unbounded blocking: a shared mutex has priority inheritance disabled.
 ```
 
 Identical utilisation, identical response times, and a different verdict. The numbers did not
-move because they are a lower bound; the analysis simply refuses to call the design schedulable
-when it cannot bound the blocking. That distinction between *a proof* and *a number* is the
-point of the tool.
+move because those response times are lower bounds; the analysis simply refuses to call the
+design schedulable when it cannot bound the blocking. That distinction between *a proof* and
+*a number* is the point of the tool.
 
 ## 3. What the schedule actually does
 
@@ -75,7 +75,8 @@ npx scheduloscope simulate examples/motor-control-no-inherit.yaml
 
 ## 4. A design that misses
 
-`examples/priority-inversion.yaml` removes the inheritance and gives the logger a 900us section:
+`examples/priority-inversion.yaml` is a smaller, deliberately broken controller variant with no
+inheritance and a 900us logger critical section:
 
 ```bash
 npx scheduloscope analyze examples/priority-inversion.yaml   # exits 1
@@ -99,7 +100,7 @@ npx scheduloscope report examples/motor-control-no-inherit.yaml --out demo/
 npx scheduloscope report examples/priority-inversion.yaml --out demo/
 ```
 
-Open the HTML report. Under the chart, the inversion table lists each event: who was blocked, by
+Open the HTML report. The "Priority inversions" section lists each event: who was blocked, by
 whom, on which mutex, and for how long. In the chart itself the blocked thread has **no bar** for
 that interval - the safety lane is empty while the logger lane is amber (`cs`, the critical
 section) and the planner lane is blue (`cpu`). An empty lane with work pending is the visual
@@ -109,6 +110,7 @@ The generated reports are committed, so this step works without running anything
 
 - [motor-control](https://fetachino.github.io/qnx-scheduloscope/demo/motor-control.html)
 - [motor-control-no-inherit](https://fetachino.github.io/qnx-scheduloscope/demo/motor-control-no-inherit.html)
+- [priority-inversion](https://fetachino.github.io/qnx-scheduloscope/demo/priority-inversion.html)
 
 ## 6. Measuring it on the target
 
@@ -135,6 +137,6 @@ the generated C compiles and runs; it does not produce QNX timings, and the JSON
 | One attribute | `analyze motor-control-no-inherit.yaml` | inconclusive, unbounded blocking |
 | Reality | `simulate ...` | 82us mitigated vs 443us unbounded |
 | Failure | `analyze priority-inversion.yaml` | MISS by 538us, blocking 900us |
-| Explanation | `report ...` | inversion table and Gantt gap |
+| Explanation | `report ...` | inversion list and Gantt gap |
 | Measurement | `gen` + `make qnx` | measured worst case on the target |
 

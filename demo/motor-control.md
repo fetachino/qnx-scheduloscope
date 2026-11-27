@@ -2,7 +2,7 @@
 
 > Field-oriented motor control with a safety supervisor, a trajectory planner, a sensor service thread and best-effort telemetry. Priorities reflect a hand-tuned QNX design, not a rate-monotonic assignment.
 
-Generated 2026-11-26T22:16:49Z by Scheduloscope 1.0.2.
+Generated 2026-11-27T01:07:05Z by Scheduloscope 1.0.2.
 
 ## Verdict
 
@@ -68,4 +68,4 @@ Simulated 20ms: 37 jobs completed, 0 deadline misses, 1 priority inversions, 88 
 - Clock period 1ms, round-robin timeslice 4 ticks, context switch 2us.
 - Aperiodic task: its explicit deadline is reported, but no arrival-rate or deadline guarantee is computed.
 
-_Response-time bounds are analytical worst cases. The simulation is one deterministic schedule of the same model; a simulated latency above its bound is a modelling bug, not a nicer number._
+_Response-time bounds are analytical worst cases when the analysis proves them; a lower-bound result is a floor. The simulation is one deterministic schedule of the same model; a simulated latency above its bound is a modelling bug, not a nicer number._

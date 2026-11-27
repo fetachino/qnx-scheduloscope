@@ -12,146 +12,335 @@
       --bg: #0d1117;
       --panel: #12171f;
       --panel-2: #0f141b;
-      --line: #232a35;
+      --panel-3: #161d27;
+      --line: #26303c;
+      --line-strong: #344152;
       --text: #e6edf3;
-      --muted: #8b949e;
-      --accent: #4f8cff;
-      --good: #3fb950;
-      --warn: #d29922;
+      --muted: #9aa7b4;
+      --muted-2: #7d8a98;
+      --accent: #6ea8fe;
+      --good: #56d364;
+      --good-soft: rgba(86,211,100,0.13);
+      --warn: #e3b341;
+      --warn-soft: rgba(227,179,65,0.13);
+      --bad: #ff7b72;
+      --bad-soft: rgba(255,123,114,0.13);
       --radius: 12px;
+      --radius-sm: 8px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
-    * { box-sizing: border-box; }
-    html { background: var(--bg); }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { background: var(--bg); scroll-behavior: smooth; }
     body {
       margin: 0;
       background: var(--bg);
       color: var(--text);
-      font: 16px/1.65 system-ui, -apple-system, 'Segoe UI', sans-serif;
+      font: 16px/1.65 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
-    .wrap { width: min(1080px, calc(100% - 48px)); margin: 0 auto; }
-    .site-header {
-      display: flex; align-items: center; justify-content: space-between; gap: 20px;
-      padding: 24px 0; border-bottom: 1px solid var(--line);
-    }
-    .brand { color: var(--text); font-weight: 700; letter-spacing: -0.02em; font-size: 20px; }
-    .brand span { color: var(--accent); }
-    nav { display: flex; flex-wrap: wrap; gap: 18px; font-size: 14px; }
-    nav a { color: var(--muted); }
-    nav a:hover { color: var(--text); }
-    main { padding: 56px 0 72px; }
-    .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 42px; align-items: start; }
-    .eyebrow { margin: 0 0 12px; color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+    a { color: var(--accent); text-decoration-color: rgba(110,168,254,0.45); text-underline-offset: 3px; }
+    a:hover { color: #a8ccff; text-decoration-color: currentColor; }
+    a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
     h1, h2, h3 { letter-spacing: -0.025em; line-height: 1.15; }
-    h1 { margin: 0 0 18px; font-size: clamp(38px, 6vw, 62px); max-width: 13ch; }
-    .lede { margin: 0; color: #b9c2cc; font-size: 18px; max-width: 58ch; }
-    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 26px 0 18px; }
-    .button { display: inline-block; padding: 10px 16px; border-radius: 8px; font-weight: 650; font-size: 14px; }
+    .skip-link {
+      position: absolute; left: 16px; top: -64px; z-index: 50;
+      padding: 10px 14px; border-radius: 6px; background: var(--text); color: var(--bg);
+      font-weight: 650; text-decoration: none;
+    }
+    .skip-link:focus { top: 12px; }
+    .wrap { width: min(1120px, calc(100% - 48px)); margin: 0 auto; }
+    .site-header-shell {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(13,17,23,0.94);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+    }
+    .site-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 13px 0; }
+    .brand { color: var(--text); font-weight: 700; letter-spacing: -0.02em; font-size: 19px; text-decoration: none; white-space: nowrap; }
+    .brand span { color: var(--accent); }
+    .site-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-size: 13px; }
+    .site-nav a { color: var(--muted); padding: 7px 10px; border-radius: 6px; text-decoration: none; }
+    .site-nav a:hover { color: var(--text); background: var(--panel-3); }
+    .site-nav a.external { color: var(--muted-2); }
+    main { padding: 54px 0 72px; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr); gap: 42px; align-items: start; }
+    .hero > *, .tour > *, .run > *, .split > * { min-width: 0; }
+    .eyebrow { margin: 0 0 12px; color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+    h1 { margin: 0 0 18px; font-size: clamp(38px, 6vw, 60px); max-width: 13ch; text-wrap: balance; }
+    .lede { margin: 0; color: #c2ccd6; font-size: 18px; line-height: 1.6; max-width: 58ch; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 25px 0 16px; }
+    .button { display: inline-flex; align-items: center; padding: 10px 15px; border-radius: 8px; font-weight: 650; font-size: 14px; text-decoration: none; }
     .button.primary { background: var(--accent); color: #07111f; }
-    .button.secondary { border: 1px solid var(--line); color: var(--text); background: var(--panel); }
-    .button:hover { text-decoration: none; filter: brightness(1.08); }
-    .facts { display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--muted); font-size: 13px; }
+    .button.secondary { border: 1px solid var(--line-strong); color: var(--text); background: var(--panel); }
+    .button:hover { filter: brightness(1.08); text-decoration: none; }
+    .hero-note { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 17px; color: var(--muted); font-size: 12.5px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); flex: 0 0 auto; margin-top: 6px; }
+    .facts { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: 12.5px; }
     .facts strong { color: var(--text); font-weight: 600; }
-    .shot { margin: 0; }
-    .shot img { display: block; width: 100%; height: auto; max-height: 760px; object-fit: cover; object-position: top; border: 1px solid var(--line); border-radius: var(--radius); background: #0b0f16; box-shadow: 0 18px 50px rgba(0,0,0,0.35); }
-    .shot figcaption { margin-top: 10px; color: var(--muted); font-size: 12.5px; }
-    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 54px 0 0; }
+    .shot { margin: 0; min-width: 0; }
+    .shot a { display: block; border-radius: var(--radius); }
+    .shot img { display: block; width: 100%; max-width: 100%; height: auto; max-height: 660px; object-fit: cover; object-position: top; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
+    .shot figcaption { margin-top: 10px; color: var(--muted); font-size: 12px; }
+    .shot code { font: 12px var(--mono); background: var(--panel-2); border: 1px solid var(--line); padding: 1px 5px; border-radius: 4px; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 52px 0 0; }
     .card, .panel, .boundary { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
-    .card { padding: 22px; }
-    .card h2 { margin: 0 0 8px; font-size: 18px; }
-    .card p { margin: 0; color: var(--muted); font-size: 14px; }
+    .card { padding: 20px; }
+    .card .num { display: block; color: var(--accent); font: 600 11px var(--mono); margin-bottom: 12px; }
+    .card h2 { margin: 0 0 7px; font-size: 18px; }
+    .card p { margin: 0; color: var(--muted); font-size: 13.5px; }
     .panel { padding: 26px; margin-top: 18px; }
-    .panel h2 { margin: 0 0 14px; font-size: 24px; }
-    .panel p { margin: 0 0 14px; color: #b9c2cc; }
-    .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 28px; align-items: start; }
+    .panel h2 { margin: 0 0 10px; font-size: 24px; }
+    .panel > p { margin: 0 0 14px; color: #b9c2cc; }
+    .section-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 30px; margin-bottom: 18px; }
+    .section-head p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 54ch; }
+    .tour { display: grid; grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr); gap: 34px; margin-top: 18px; }
+    .tour h2 { font-size: 25px; margin-bottom: 8px; }
+    .tour-intro > p:last-of-type { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; }
+    .text-link { font-size: 13.5px; font-weight: 600; }
+    .tour-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+    .tour-step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+    .tour-step:first-child { padding-top: 0; }
+    .tour-step:last-child { border-bottom: 0; padding-bottom: 0; }
+    .step-num { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--accent); font: 600 10px var(--mono); }
+    .tour-step h3 { margin: 1px 0 3px; font-size: 14px; }
+    .tour-step p { margin: 0; color: var(--muted); font-size: 12.5px; }
+    .tour-step .tag { display: inline-block; margin-top: 5px; color: var(--muted-2); font: 10.5px var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
+    .report-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .report-card {
+      display: flex; flex-direction: column; min-width: 0;
+      padding: 18px; border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--panel-2); color: var(--text); text-decoration: none;
+    }
+    .report-card:hover { border-color: var(--accent); color: var(--text); text-decoration: none; }
+    .report-card .verdict { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-bottom: 12px; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 650; }
+    .verdict::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .verdict-good { color: var(--good); background: var(--good-soft); }
+    .verdict-warn { color: var(--warn); background: var(--warn-soft); }
+    .verdict-bad { color: var(--bad); background: var(--bad-soft); }
+    .report-card h3 { font-size: 16px; margin: 0 0 5px; }
+    .report-card p { margin: 0 0 12px; color: var(--muted); font-size: 12.5px; }
+    .report-card .look { margin-top: auto; padding-top: 11px; border-top: 1px solid var(--line); color: var(--muted-2); font-size: 11.5px; }
+    .report-card .open { margin-top: 10px; font-size: 12.5px; font-weight: 650; color: var(--accent); }
+    .map-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .map-item { display: block; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel-2); text-decoration: none; }
+    .map-item:hover { border-color: var(--accent); }
+    .map-item .map-num { display: block; color: var(--muted-2); font: 10px var(--mono); margin-bottom: 5px; }
+    .map-item strong { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
+    .map-item span { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+    .terms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; margin: 0; border-top: 1px solid var(--line); }
+    .term { padding: 11px 0; border-bottom: 1px solid var(--line); }
+    .term dt { color: var(--text); font-size: 13px; font-weight: 650; margin-bottom: 2px; }
+    .term dd { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+    .run { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 28px; align-items: start; }
+    .run p { color: var(--muted); font-size: 13.5px; }
+    pre { margin: 0; max-width: 100%; padding: 16px; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #0b0f16; color: #d6e0e9; font: 12px/1.8 var(--mono); }
+    .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 28px; align-items: start; }
     .split h2 { margin-bottom: 8px; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+    table { width: 100%; min-width: 540px; border-collapse: collapse; font-size: 13px; }
     th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-    th { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+    th { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; background: var(--panel-2); }
     tr:last-child td { border-bottom: none; }
-    code { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: #0b0f16; border: 1px solid #1d2430; padding: 1px 5px; border-radius: 4px; }
-    .links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; margin: 0; padding: 0; list-style: none; }
+    code { font: 12px/1.5 var(--mono); background: #0b0f16; border: 1px solid #1d2430; padding: 1px 5px; border-radius: 4px; }
+    .links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 26px; margin: 0; padding: 0; list-style: none; }
     .links li { padding: 9px 0; border-bottom: 1px solid var(--line); }
     .links a { font-weight: 600; }
-    .links span { display: block; color: var(--muted); font-size: 13px; }
+    .links span { display: block; color: var(--muted); font-size: 12.5px; }
     .boundary { border-left: 3px solid var(--warn); padding: 22px 24px; margin-top: 18px; }
     .boundary h2 { margin: 0 0 8px; font-size: 19px; }
-    .boundary p { margin: 0; color: #b9c2cc; font-size: 14px; }
+    .boundary p { margin: 0; color: #b9c2cc; font-size: 13.5px; }
     .boundary strong { color: var(--text); }
-    footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; padding: 24px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+    section[id] { scroll-margin-top: 82px; }
+    footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; padding: 24px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
     footer a { color: var(--muted); }
-    @media (max-width: 860px) {
-      .hero, .split { grid-template-columns: 1fr; }
-      .grid { grid-template-columns: 1fr; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    @media (max-width: 900px) {
+      .hero, .tour, .split, .run { grid-template-columns: 1fr; gap: 24px; }
+      .grid, .report-grid { grid-template-columns: 1fr; }
+      .map-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       h1 { max-width: 16ch; }
-      .shot { order: -1; }
-      .shot img { max-height: 540px; }
+      .shot img { max-height: 520px; }
     }
-    @media (max-width: 560px) {
-      .wrap { width: min(100% - 32px, 1080px); }
-      main { padding-top: 34px; }
-      .site-header { align-items: flex-start; flex-direction: column; }
-      .links { grid-template-columns: 1fr; }
-      .panel { padding: 20px; }
+    @media (max-width: 620px) {
+      .wrap { width: min(100% - 32px, 1120px); }
+      main { padding-top: 30px; }
+      .site-header { align-items: flex-start; flex-direction: column; gap: 7px; padding: 10px 0; }
+      .site-nav { margin-left: -10px; }
+      .site-nav a { padding: 6px 8px; }
+      .panel { padding: 19px; }
+      .section-head { align-items: flex-start; flex-direction: column; gap: 6px; }
+      .links, .terms { grid-template-columns: 1fr; }
+      .map-grid { grid-template-columns: 1fr; }
+      .hero-note { font-size: 12px; }
+      .shot img { max-height: 430px; }
+      section[id] { scroll-margin-top: 106px; }
+      footer { flex-direction: column; gap: 4px; }
+    }
+    @media (max-width: 420px) {
+      .site-nav { gap: 0; }
+      .site-nav a { font-size: 12px; }
+      .button { width: 100%; justify-content: center; }
     }
   </style>
 </head>
 <body>
-  <header class="wrap site-header">
-    <a class="brand" href="./">Schedulo<span>scope</span></a>
-    <nav aria-label="Project links">
-      <a href="https://github.com/fetachino/qnx-scheduloscope">Source</a>
-      <a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/README.md">README</a>
-      <a href="#docs">Documentation</a>
-      <a href="#reports">Reports</a>
-    </nav>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header-shell">
+    <div class="wrap site-header">
+      <a class="brand" href="./">Schedulo<span>scope</span></a>
+      <nav class="site-nav" aria-label="Project sections">
+        <a href="#tour">Tour</a>
+        <a href="#reports">Reports</a>
+        <a href="#concepts">Concepts</a>
+        <a href="#docs">Docs</a>
+        <a class="external" href="https://github.com/fetachino/qnx-scheduloscope">Source</a>
+      </nav>
+    </div>
   </header>
 
-  <main class="wrap">
-    <section class="hero">
+  <main id="main" class="wrap">
+    <section class="hero" aria-labelledby="hero-title">
       <div>
         <p class="eyebrow">QNX OS 8.0 · Design-time scheduling analysis</p>
-        <h1>Find timing bugs before the target does.</h1>
-        <p class="lede">Scheduloscope models a QNX task set, computes a response-time bound, simulates the schedule, and generates a C harness for measuring the same workload on hardware.</p>
+        <h1 id="hero-title">Find timing bugs before the target does.</h1>
+        <p class="lede">Scheduloscope models a QNX task set, computes a worst-case response-time bound where it can prove one, simulates the schedule, and generates a C harness for measuring the same workload on hardware.</p>
         <p class="actions">
-          <a class="button primary" href="demo/motor-control.html">Open the generated report</a>
-          <a class="button secondary" href="https://github.com/fetachino/qnx-scheduloscope">View source</a>
+          <a class="button primary" href="demo/motor-control.html">Open the baseline report</a>
+          <a class="button secondary" href="#tour">Take the three-report tour</a>
         </p>
+        <p class="hero-note"><span class="dot" aria-hidden="true"></span><span>Model and simulation output, not a QNX hardware measurement. The QNX backend is build-ready but was not compiled or booted here.</span></p>
         <div class="facts">
           <span><strong>v1.0.2</strong></span>
           <span>Apache-2.0</span>
           <span>Node 20.11+</span>
-          <span>QNX backend: build-ready, not executed</span>
+          <span>Single-core fixed-priority model</span>
         </div>
       </div>
       <figure class="shot">
-        <a href="demo/motor-control.html"><img src="assets/report.png" alt="Scheduloscope 1.0.2 report for the motor-control example, showing a schedulable verdict, task set, response-time analysis, and simulated schedule."></a>
-        <figcaption>Generated from <code>examples/motor-control.yaml</code>. This is a model report, not a QNX measurement.</figcaption>
+        <a href="demo/motor-control.html"><img src="assets/report.png" alt="Top of the Scheduloscope motor-control report, showing the schedulable verdict, task set, response-time analysis, and simulated timeline."></a>
+        <figcaption>Generated from <code>examples/motor-control.yaml</code>. The report explains each number; the timeline is one deterministic run, not a target trace.</figcaption>
       </figure>
     </section>
 
     <section class="grid" aria-label="What Scheduloscope does">
       <article class="card">
-        <h2>Analyze</h2>
+        <span class="num">01 · ANALYZE</span>
+        <h2>Prove a bound</h2>
         <p>Fixed-priority response-time analysis with QNX-specific blocking, priority inheritance, interrupt interference, and context-switch terms.</p>
       </article>
       <article class="card">
-        <h2>Simulate</h2>
-        <p>A deterministic discrete-event schedule with FIFO, round-robin, sporadic budgets, priority inversion, message inheritance, and ISR lanes.</p>
+        <span class="num">02 · SIMULATE</span>
+        <h2>See one schedule</h2>
+        <p>A deterministic discrete-event run with FIFO, round-robin, sporadic budgets, priority inversion, message inheritance, and ISR lanes.</p>
       </article>
       <article class="card">
-        <h2>Measure</h2>
-        <p>Generate a C harness for the same model, with a QNX backend intended for on-target measurement and a POSIX backend for host compilation and CI.</p>
+        <span class="num">03 · MEASURE</span>
+        <h2>Generate a harness</h2>
+        <p>Create C for the same model, with a QNX backend intended for on-target measurement and a POSIX backend for host compilation and CI.</p>
       </article>
     </section>
 
-    <section class="panel split">
+    <section class="panel tour" id="tour" aria-labelledby="tour-title">
+      <div class="tour-intro">
+        <p class="eyebrow">Start here</p>
+        <h2 id="tour-title">One design, three reports, one failure mode.</h2>
+        <p>Read them in order. The first shows a working design; the next two isolate what happens when the blocking bound is removed and when the critical section grows.</p>
+        <a class="text-link" href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/demo-tour.md">Read the full demo tour</a>
+      </div>
+      <ol class="tour-steps">
+        <li class="tour-step">
+          <span class="step-num" aria-hidden="true">1</span>
+          <div><h3><a href="demo/motor-control.html">Start with the baseline</a></h3>
+          <p>Open the motor controller. Read the verdict, then compare the control task's response bound with its 1 ms deadline.</p><span class="tag">Schedulable · inheritance enabled</span></div>
+        </li>
+        <li class="tour-step">
+          <span class="step-num" aria-hidden="true">2</span>
+          <div><h3><a href="demo/motor-control-no-inherit.html">Remove inheritance</a></h3>
+          <p>The only model change is <code>protocol: none</code>. Look for the inconclusive verdict, the lower-bound results and the blocking decomposition.</p><span class="tag">Inconclusive · lower bound</span></div>
+        </li>
+        <li class="tour-step">
+          <span class="step-num" aria-hidden="true">3</span>
+          <div><h3><a href="demo/priority-inversion.html">See a deadline miss</a></h3>
+          <p>A deliberately broken variant. The analysis identifies the missed deadline and the simulator shows the schedule that produces it.</p><span class="tag">Unschedulable · control misses by 538 µs</span></div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="panel" id="reports" aria-labelledby="reports-title">
+      <div class="section-head">
+        <div><p class="eyebrow">Generated reports</p><h2 id="reports-title">Open a result, then inspect the evidence</h2></div>
+        <p>Every report is self-contained HTML generated from the YAML model. No values are hand-entered into the page.</p>
+      </div>
+      <div class="report-grid">
+        <a class="report-card" href="demo/motor-control.html">
+          <span class="verdict verdict-good">Schedulable</span>
+          <h3>Motor control — inherited priorities</h3>
+          <p>A five-task controller with a safety supervisor, a 1 ms control loop, a planner, telemetry, and a logger.</p>
+          <span class="look">Look for: positive control slack, the blocking decomposition, and one mitigated inversion.</span>
+          <span class="open">Open report →</span>
+        </a>
+        <a class="report-card" href="demo/motor-control-no-inherit.html">
+          <span class="verdict verdict-warn">Inconclusive</span>
+          <h3>Motor control — no inheritance</h3>
+          <p>The same workload with <code>stateLock</code> set to <code>protocol: none</code>, so lower-priority work can block a high-priority task indefinitely.</p>
+          <span class="look">Look for: the lower-bound results, the blocking decomposition, and why the analysis refuses a guarantee.</span>
+          <span class="open">Open report →</span>
+        </a>
+        <a class="report-card" href="demo/priority-inversion.html">
+          <span class="verdict verdict-bad">Unschedulable</span>
+          <h3>Priority inversion — deadline miss</h3>
+          <p>A deliberately broken variant with a long logger critical section. Control's worst-case response exceeds its 1 ms deadline.</p>
+          <span class="look">Look for: the error diagnostic, the 900 µs blocking term, and the simulated miss.</span>
+          <span class="open">Open report →</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="map-title">
+      <div class="section-head">
+        <div><p class="eyebrow">Inside a report</p><h2 id="map-title">Four places to look</h2></div>
+        <p>The report has a fixed structure and a section nav. Use these links to jump straight to a section in the baseline.</p>
+      </div>
+      <div class="map-grid">
+        <a class="map-item" href="demo/motor-control.html#overview"><span class="map-num">01</span><strong>Verdict</strong><span>What the analysis proves, and the model boundary.</span></a>
+        <a class="map-item" href="demo/motor-control.html#tasks"><span class="map-num">02</span><strong>Task set</strong><span>Priority, activation, execution, deadline, and program order.</span></a>
+        <a class="map-item" href="demo/motor-control.html#analysis"><span class="map-num">03</span><strong>Analysis</strong><span>The R = C + B + I + ISR terms and R versus D.</span></a>
+        <a class="map-item" href="demo/motor-control.html#timeline"><span class="map-num">04</span><strong>Timeline</strong><span>One deterministic schedule, plus a table alternative.</span></a>
+      </div>
+    </section>
+
+    <section class="panel" id="concepts" aria-labelledby="concepts-title">
+      <div class="section-head">
+        <div><p class="eyebrow">Concepts</p><h2 id="concepts-title">The four ideas behind the result</h2></div>
+        <p>The report defines these and more in its <a href="demo/motor-control.html#terms">key terms</a>. The short version:</p>
+      </div>
+      <dl class="terms">
+        <div class="term"><dt>Task priority</dt><dd>QNX uses 0 for idle and 1–255 for threads; a higher number runs first. Priorities above the unprivileged ceiling require an explicit ability.</dd></div>
+        <div class="term"><dt>Response time and deadline</dt><dd>R is the analytical worst-case time from release to completion when the analysis can prove it; a lower-bound result is a floor. D is the relative deadline. A task is proven schedulable only when R ≤ D.</dd></div>
+        <div class="term"><dt>Priority inversion</dt><dd>A high-priority task waits for a lower-priority task holding a shared resource. Inheritance or a priority ceiling bounds that wait.</dd></div>
+        <div class="term"><dt>Why simulation is not enough</dt><dd>One deterministic schedule can show a failure, but it cannot prove absence of one. The analysis supplies the bound; the timeline explains the mechanism.</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel" id="run" aria-labelledby="run-title">
+      <div class="run">
+        <div>
+          <p class="eyebrow">Reproduce it</p>
+          <h2 id="run-title">Run the same reports locally</h2>
+          <p>The examples, CLI, analysis, simulator, and report generator are all in the repository. Node 20.11 or newer is required.</p>
+          <p><a href="https://github.com/fetachino/qnx-scheduloscope#quick-start">Read the quick start</a> for the full command list and model reference.</p>
+        </div>
+        <pre><code>git clone https://github.com/fetachino/qnx-scheduloscope.git
+cd qnx-scheduloscope
+npm ci
+npm run demo
+npm test</code></pre>
+      </div>
+    </section>
+
+    <section class="panel split" aria-labelledby="boundary-title">
       <div>
-        <h2>Two backends, one explicit boundary</h2>
+        <h2 id="boundary-title">Two backends, one explicit boundary</h2>
         <p>The analysis and simulation run on the host. The generated harness has two implementations with different evidence.</p>
       </div>
       <div class="table-wrap">
@@ -165,36 +354,30 @@
       </div>
     </section>
 
-    <section class="panel" id="reports">
-      <h2>Reports</h2>
-      <p>Both reports are self-contained HTML generated by Scheduloscope 1.0.2.</p>
+    <section class="panel" id="docs" aria-labelledby="docs-title">
+      <div class="section-head">
+        <div><p class="eyebrow">Documentation</p><h2 id="docs-title">Go deeper</h2></div>
+        <p>Short reference pages for the model, the QNX behaviour, the math, and the verification boundary.</p>
+      </div>
       <ul class="links">
-        <li><a href="demo/motor-control.html">Motor control — inherited priorities</a><span>Schedulable baseline with priority inheritance.</span></li>
-        <li><a href="demo/motor-control-no-inherit.html">Motor control — no inheritance</a><span>The same design with the mutex protocol changed.</span></li>
-      </ul>
-    </section>
-
-    <section class="panel" id="docs">
-      <h2>Documentation</h2>
-      <ul class="links">
+        <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/demo-tour.md">Demo tour</a><span>Six steps from a clean clone.</span></li>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/model-reference.md">Model reference</a><span>Every field, default, and unit.</span></li>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/qnx-semantics.md">QNX semantics</a><span>What the model reproduces and where it stops.</span></li>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/analysis-method.md">Analysis method</a><span>The response-time equation and each term.</span></li>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/verification.md">Verification</a><span>Commands, test results, and the QNX gap.</span></li>
-        <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/demo-tour.md">Demo tour</a><span>Six steps from a clean clone.</span></li>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/README.md">README</a><span>Quick start, architecture, and limitations.</span></li>
       </ul>
     </section>
 
-    <section class="boundary">
-      <h2>What this project does not claim</h2>
+    <section class="boundary" aria-labelledby="claims-title">
+      <h2 id="claims-title">What this project does not claim</h2>
       <p><strong>No QNX SDP was available during verification.</strong> The QNX backend and image template are build-ready and source-reviewed, not compiled, booted, or measured on a target here. No QNX timing number is presented as a measurement. The host test suite and POSIX harness checks are real, and their limits are documented.</p>
     </section>
   </main>
 
   <footer class="wrap">
     <span>© 2026 Scheduloscope · Apache-2.0</span>
-    <span><a href="https://github.com/fetachino/qnx-scheduloscope">GitHub</a> · <a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/LICENSE">License</a></span>
+    <span><a href="https://github.com/fetachino/qnx-scheduloscope">GitHub</a> · <a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/LICENSE">License</a> · <a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/verification.md">Verification</a></span>
   </footer>
 </body>
 </html>

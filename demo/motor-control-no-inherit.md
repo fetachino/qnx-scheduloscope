@@ -2,7 +2,7 @@
 
 > The motor-control design with PTHREAD_PRIO_NONE on stateLock: no priority inheritance, so a low-priority holder can be preempted while a safety thread waits. Used to show what the analysis refuses to bound and what the schedule actually does.
 
-Generated 2026-11-26T22:16:50Z by Scheduloscope 1.0.2.
+Generated 2026-11-27T01:07:19Z by Scheduloscope 1.0.2.
 
 ## Verdict
 
@@ -24,11 +24,13 @@ Simulated 20ms: 37 jobs completed, 0 deadline misses, 2 priority inversions, 89 
 
 | Task | C | B | I | ISR | R | D | Slack | Result |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| safety | 124us | 100us | 0ns | 26us | 250us | 2ms | 1.75ms | met |
-| control | 364us | 100us | 124us | 51us | 639us | 1ms | 361us | met |
+| safety | 124us | 100us | 0ns | 26us | 250us | 2ms | 1.75ms | lower bound |
+| control | 364us | 100us | 124us | 51us | 639us | 1ms | 361us | lower bound |
 | planner | 684us | 0ns | 852us | 102us | 1.638ms | 5ms | 3.362ms | met |
 | telemetry | 2.504ms | 0ns | 4.776ms | 408us | 7.688ms | 20ms | 12.312ms | met |
 | logger | 404us | 0ns | 7.768ms | 459us | 8.631ms | 50ms | 41.369ms | n/a |
+
+_A "lower bound" result treats a mutex with inheritance disabled as a finite lower bound. It is not a deadline guarantee._
 
 ### Where the blocking comes from
 
@@ -70,4 +72,4 @@ Simulated 20ms: 37 jobs completed, 0 deadline misses, 2 priority inversions, 89 
 - Unbounded blocking: a shared mutex has priority inheritance disabled.
 - Aperiodic task: its explicit deadline is reported, but no arrival-rate or deadline guarantee is computed.
 
-_Response-time bounds are analytical worst cases. The simulation is one deterministic schedule of the same model; a simulated latency above its bound is a modelling bug, not a nicer number._
+_Response-time bounds are analytical worst cases when the analysis proves them; a lower-bound result is a floor. The simulation is one deterministic schedule of the same model; a simulated latency above its bound is a modelling bug, not a nicer number._

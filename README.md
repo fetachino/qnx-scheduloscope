@@ -14,7 +14,8 @@ estimates on a real QNX target once built with the QNX SDP.
 ![Scheduloscope report](assets/report.png)
 
 [Project site](https://fetachino.github.io/qnx-scheduloscope/) · [Open the generated report](https://fetachino.github.io/qnx-scheduloscope/demo/motor-control.html) — one self-contained HTML file, no server, no
-build step.
+build step. The report starts with a verdict and reading guide, then explains the task set, the
+response-time terms, the simulated schedule, and every diagnostic.
 
 Or take the [four-minute demo tour](docs/demo-tour.md): baseline, one attribute changed, deadline
 miss, the inversion in the chart, and how the generated harness is designed to measure it on the
@@ -170,19 +171,19 @@ the logger inherits priority 70 and finishes, and no deadline is missed.
 on `stateLock`:
 
 ```text
-motor-control-no-inherit  inconclusive  |  5 tasks  |  68.8% utilization  |  worst slack 361us
+motor-control-no-inherit  inconclusive  |  5 tasks  |  68.8% utilization  |  smallest reported slack 361us
 
 caveats
   - Unbounded blocking: a shared mutex has priority inheritance disabled.
 ```
 
-The utilisation and the response times are unchanged, because they are a lower bound; the verdict
-changed because the tool will not promise a bound it cannot prove. The simulation fills in what the
+The utilisation and the response times are unchanged, because those response times are lower
+bounds; the verdict changed because the tool will not promise a bound it cannot prove. The simulation fills in what the
 bound cannot: safety is now blocked for 443us instead of 82us, its worst response grows from 206us
 to 567us, and the inversion is reported as unbounded rather than mitigated.
 
-`examples/priority-inversion.yaml` - the same controller with `protocol: none` on that mutex
-(and the service channel folded into the tasks, so the comparison is about the protocol):
+`examples/priority-inversion.yaml` - a smaller, deliberately broken controller variant with four
+tasks, `protocol: none`, and a 900us logger critical section:
 
 ```text
 motor-control-no-inheritance  unschedulable  |  4 tasks  |  worst slack -538us
@@ -240,7 +241,7 @@ harness start from the same inputs and are intended to stay consistent.
 
 ## Verification
 
-Everything that can be checked on a host is checked on a host: 98 tests (94 run, 4
+Everything that can be checked on a host is checked on a host: 102 tests (98 run, 4
 QNX-preprocessing skips without `gcc`), a TypeScript build with `strict` and
 `noUncheckedIndexedAccess`, and a CI job that compiles the generated
 harness with `gcc -Wall -Wextra -Wundef -Werror`, runs it, and exercises its failure, RPC-chain and teardown
@@ -248,7 +249,7 @@ paths under AddressSanitizer and UndefinedBehaviorSanitizer.
 
 | Area | Status |
 | --- | --- |
-| Full test suite | 98 tests: 94 pass, 4 skip without `gcc`; 5/5 QNX preprocessing tests pass in the Linux container |
+| Full test suite | 102 tests: 98 pass, 4 skip without `gcc`; 5/5 QNX preprocessing tests pass in the Linux container |
 | RTA against hand-computed cases | passing (see `tests/rta.test.ts`) |
 | Simulator semantics (PI, PCP, RR, sporadic, ISR) | passing |
 | Report and SVG generation | passing |

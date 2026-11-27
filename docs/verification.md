@@ -23,7 +23,7 @@ npm ci
 npm test        # tsc -p tsconfig.json && node scripts/test.mjs
 ```
 
-Result: **98 tests, 94 passing, 0 failing, 4 skipped**, about 3 seconds. The four skips are the QNX preprocessing tests, which need `gcc`; the same file passes in the Linux container described below (5/5).
+Result: **102 tests, 98 passing, 0 failing, 4 skipped**, about 3 seconds. The four skips are the QNX preprocessing tests, which need `gcc`; the same file passes in the Linux container described below (5/5).
 
 | File | Tests | Covers |
 | --- | --- | --- |
@@ -32,10 +32,10 @@ Result: **98 tests, 94 passing, 0 failing, 4 skipped**, about 3 seconds. The fou
 | `tests/validate.test.ts` | 14 | QNX priority rules, PCP ceilings, duplicate names, ISR saturation, self-suspension, sporadic budget and replenishment limits. |
 | `tests/rta.test.ts` | 9 | Hand-computed response times, inheritance vs no inheritance, interrupt terms, divergence. |
 | `tests/sim.test.ts` | 11 | Determinism, priority order, round robin, sporadic budget, fixed-priority channels, PI and no-PI inversion, example model. |
-| `tests/report.test.ts` | 7 | Summary numbers, Markdown and HTML structure, HTML escaping, diagnostics merging, and an aperiodic task with no deadline rendered as `none`. |
+| `tests/report.test.ts` | 10 | Summary numbers, Markdown and HTML structure, HTML escaping, diagnostics merging, accessible landmarks and table alternatives, the model boundary, term explanations, lower-bound blocking, and an aperiodic task with no deadline rendered as `none`. |
 | `tests/codegen.test.ts` | 21 | Generated C contents, real tabs in the Makefile, `-Wundef`, `-D_QNX_SOURCE` on both QNX targets, `_NTO_CHF_FIXED_PRIORITY`, the priority ability, PCP ceilings, explicit `PTHREAD_PRIO_NONE`, `pthread_t` thread handles, 64-bit receive IDs, the loader/link in the image build file, the start gate and stop protocol, unsupported segments, interrupt reporting, response-time definition, teardown order, no report on an invalid run. |
 | `tests/qnx-backend.test.ts` | 5 | Preprocesses the generated QNX source with stub headers: `PROCMGR_AID_PRIORITY` at priority 70, at a PCP ceiling of 70, none at 60, no undefined `SS_` macro. |
-| `tests/cli.test.ts` | 8 | Exit codes 0/1/2, `--json`, `gen`, `init --force`, missing file handling. |
+| `tests/cli.test.ts` | 9 | Exit codes 0/1/2, `--json`, `gen`, `init --force`, missing file handling, and lower-bound labels for unbounded blocking. |
 | `tests/api.test.ts` | 1 | The whole pipeline through the public entry point. |
 
 ## Scale
