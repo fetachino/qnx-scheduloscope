@@ -86,6 +86,12 @@ test('the Makefile uses real tabs, otherwise make refuses to run it', () => {
   assert.doesNotMatch(makefile, /^ {4}/m, 'spaces would break make');
   assert.match(makefile, /qnx:/);
   assert.match(makefile, /qnx-arm:/);
+  // QNX SDP 8.0 target names, checked against the qcc reference.
+  assert.match(makefile, /qcc -V gcc_ntox86_64/);
+  assert.match(makefile, /qcc -V gcc_ntoaarch64le/);
+  // -std=c11 hides POSIX/QNX declarations unless _QNX_SOURCE is defined.
+  assert.match(makefile, /qcc -V gcc_ntox86_64[^\n]*-D_QNX_SOURCE/);
+  assert.match(makefile, /qcc -V gcc_ntoaarch64le[^\n]*-D_QNX_SOURCE/);
   // -Wundef is what catches an undefined SS_* macro before it silently becomes 0.
   assert.match(makefile, /-Wundef/);
   assert.match(makefile, /workload_config\.h/);
@@ -133,6 +139,8 @@ test('the generated config publishes the highest priority so the backend can ask
   assert.match(qnx, /procmgr_ability/);
   assert.match(qnx, /PROCMGR_AID_PRIORITY/);
   assert.match(qnx, /SS_MAX_PRIORITY > SS_PRIVILEGED_CEILING/);
+  // QNX defaults a mutex to priority inheritance, so "none" needs an explicit set.
+  assert.match(qnx, /pthread_mutexattr_setprotocol\(&attr, PTHREAD_PRIO_NONE\)/);
 });
 
 test('a QNX thread that cannot get its policy or priority stops the measurement', () => {
@@ -178,18 +186,39 @@ test('the harness refuses to write a report when a thread cannot be configured',
   assert.match(harnessC, /rc = 1;\s*\n\s*goto shutdown;/);
 });
 
-test('the image build script installs the libraries the dynamic harness needs and an in-image /tmp', () => {
+test('the image build script installs the libraries the dynamic harness needs and a writable /tmp', () => {
   const harness = generate();
   const build = harness.files.find((file) => file.path === 'image.build.template')!.content;
-  assert.match(build, /startup-x86_64/);
-  assert.match(build, /procnto-smp-instr -P 63/);
-  assert.match(build, /\[type=dir perms=0777\] \/tmp/);
-  assert.match(build, /libc\.so/);
-  assert.match(build, /libgcc_s\.so\.1/);
-  assert.match(build, /ldqnx-64\.so\.2/);
-  assert.match(build, /\[type=link\] \/usr\/lib\/ldqnx-64\.so\.2=\/proc\/boot\/ldqnx-64\.so\.2/);
-  assert.match(build, /-o \/tmp\/report\.json/);
+  // QNX 8 documents startup-x86 for x86_64; startup-x86_64 is not an 8.0 name.
+  assert.match(build, /startup-x86\b/);
+  assert.doesNotMatch(build, /startup-x86_64/);
   assert.doesNotMatch(build, /startup-x86-64/);
+  assert.match(build, /procnto-smp-instr -P 63/);
+  // The IFS is mounted read-only, so /tmp must resolve to the kernel's shmem.
+  assert.match(build, /\[type=link\] \/tmp=\/dev\/shmem/);
+  assert.doesNotMatch(build, /\[type=dir perms=0777\] \/tmp/);
+  // Bare entries use mkifs' default proc/boot prefix. A directory-inline
+  // [data=copy] block would create one file named /proc/boot, not copy these.
+  assert.match(build, /\[data=copy\] scheduloscope-harness/);
+  assert.doesNotMatch(build, /\[data=copy\] \/proc\/boot = \{/);
+  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/ldqnx-64\.so\.2/);
+  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libc\.so/);
+  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libgcc_s\.so\.1/);
+  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libm\.so/);
+  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libz\.so/);
+  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libtracelog\.so\.1/);
+  // mkifs expands host variables as ${NAME}, not $NAME.
+  assert.doesNotMatch(build, /^\$QNX_TARGET/m);
+  // Commands named by the boot script must be copied into the image too.
+  assert.match(build, /^devc-ser8250$/m);
+  assert.match(build, /devc-ser8250 &/);
+  assert.match(build, /^pipe$/m);
+  assert.match(build, /^cat$/m);
+  assert.match(build, /reopen \/dev\/ser1/);
+  assert.match(build, /cat \/tmp\/report\.json/);
+  assert.match(build, /^\/usr\/lib\/ldqnx-64\.so\.2=ldqnx-64\.so\.2$/m);
+  assert.doesNotMatch(build, /\[type=link\] \/usr\/lib\/ldqnx-64\.so\.2/);
+  assert.match(build, /-o \/tmp\/report\.json/);
 });
 
 test('the channel send path provides a reply buffer for MsgReply', () => {
@@ -197,6 +226,27 @@ test('the channel send path provides a reply buffer for MsgReply', () => {
   const qnx = harness.files.find((file) => file.path === 'platform_qnx.c')!.content;
   assert.match(qnx, /char reply\[64\];/);
   assert.match(qnx, /MsgSend\(impl->coid, buf, len, reply, sizeof\(reply\)\)/);
+});
+
+test('receive IDs use the 64-bit QNX 8 rcvid_t width end to end', () => {
+  const harness = generate();
+  const platform = harness.files.find((file) => file.path === 'platform.h')!.content;
+  const qnx = harness.files.find((file) => file.path === 'platform_qnx.c')!.content;
+  const harnessC = harness.files.find((file) => file.path === 'harness.c')!.content;
+  assert.match(platform, /typedef int64_t ss_client_id;/);
+  assert.match(harnessC, /ss_client_id client = -1;/);
+  assert.match(qnx, /rcvid_t rcvid = MsgReceive\(/);
+  assert.match(qnx, /\*client = \(ss_client_id\)rcvid;/);
+  assert.match(qnx, /MsgReply\(\(rcvid_t\)client,/);
+});
+
+test('thread handles use pthread_t rather than an assumed integer width', () => {
+  const harness = generate();
+  const platform = harness.files.find((file) => file.path === 'platform.h')!.content;
+  const qnx = harness.files.find((file) => file.path === 'platform_qnx.c')!.content;
+  assert.match(platform, /pthread_t handle;/);
+  assert.doesNotMatch(platform, /unsigned long handle/);
+  assert.doesNotMatch(qnx, /\(pthread_t\)/);
 });
 
 test('the harness uses an explicit stop message and a bounded startup barrier', () => {
@@ -210,6 +260,14 @@ test('the harness uses an explicit stop message and a bounded startup barrier', 
   assert.doesNotMatch(harnessC, /ss_channel_send\(&g_channels\[g_server_channel\[s\]\], message, 1\)/);
   assert.match(harnessC, /ss_gate_wait_ready/);
   assert.match(harnessC, /g_start_us = ss_now_us\(\);/);
+  // struct _pulse.code is int8_t: a 16-bit sentinel would be truncated by MsgSendPulse.
+  const stopCode = platform.match(/#define SS_STOP_PULSE_CODE (0x[0-9a-f]+)/i);
+  assert.ok(stopCode, 'the stop pulse code is defined');
+  const codeText = stopCode[1];
+  assert.ok(codeText, 'the stop pulse code has a value');
+  const code = Number.parseInt(codeText, 16);
+  assert.ok(code >= 0 && code <= 0x7f, 'the stop pulse code must fit the positive 8-bit range');
+  assert.match(platform, /#define SS_JOIN_TIMEOUT 1/);
 });
 
 test('the QNX backend releases channels, mutexes and thread arguments', () => {

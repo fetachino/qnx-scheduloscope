@@ -12,6 +12,10 @@ make qnx        # x86_64
 make qnx-arm    # aarch64le, for a board
 ```
 
+Both QNX targets compile with `-std=c11 -D_QNX_SOURCE`. Under strict ISO C,
+`qcc` hides the POSIX and QNX OS declarations the harness uses unless
+`_QNX_SOURCE` is defined.
+
 `qnx-arm` builds only the AArch64 executable. `image.build.template` is an
 x86_64 boot image template; there is no matching AArch64 image template, so a
 board image needs its own startup and driver lines.
@@ -33,10 +37,15 @@ If a thread cannot be given its modelled policy and priority, the harness stops
 with an explanatory error instead of returning numbers for a different system.
 
 `image.build.template` is a starting point for `mkifs`; it copies the harness,
-the QNX 8 dynamic loader `ldqnx-64.so.2`, `libc.so` and `libgcc_s.so.1`, and
-creates the `/usr/lib/ldqnx-64.so.2` symlink the ELF interpreter needs. It also
-creates a writable `/tmp` and runs the harness with `-o /tmp/report.json`. It has
-not been built or booted in this project.
+the QNX 8 dynamic loader `ldqnx-64.so.2`, `libc.so`, `libgcc_s.so.1` and the
+small `libm.so`, `libz.so` and `libtracelog.so.1` support set into `/proc/boot`
+(the default `mkifs` prefix), and creates the `/usr/lib/ldqnx-64.so.2` link the
+ELF interpreter needs. It also includes the `devc-ser8250`, `pipe` and `cat`
+commands named by the boot script; `devc-ser8250` runs with `&` because it is a
+daemon and would otherwise block the script. The IFS is read-only, so `/tmp` is a
+link to the kernel's writable `/dev/shmem`; the harness writes
+`-o /tmp/report.json` there and the script prints it to `/dev/ser1`. It has not
+been built or booted in this project.
 
 ## Build and run on a POSIX host
 

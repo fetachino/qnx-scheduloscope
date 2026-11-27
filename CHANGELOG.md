@@ -3,6 +3,35 @@
 All notable changes to this project are documented here. The format follows Keep a Changelog and
 the project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+Phase 3 source and build-configuration validation against the QNX SDP 8.0 reference. No SDP was
+installed, so this entry records corrections and tests only; it does not claim a native build,
+image, boot or QNX timing.
+
+### Fixed
+
+- QNX 8 `rcvid_t` is 64-bit signed, not `int`. Receive IDs now travel as `ss_client_id`
+  (`int64_t`) through both backends, so `MsgReply` cannot receive a truncated ID.
+- Thread handles are stored as `pthread_t`, not `unsigned long` plus casts; this removes an
+  assumed integer width from the QNX and POSIX backends.
+- Both QNX Makefile targets define `_QNX_SOURCE` with `-std=c11`; without it qcc hides the POSIX
+  and QNX declarations the harness uses.
+- A mutex whose model protocol is `none` now sets `PTHREAD_PRIO_NONE` explicitly instead of
+  inheriting QNX's default `PTHREAD_PRIO_INHERIT`.
+- The stop pulse is `0x53`. `struct _pulse.code` is 8-bit, so the 1.0.2 sentinel `0x5353` was
+  truncated and could never match.
+- `image.build.template` now uses `startup-x86`, `${QNX_TARGET}` paths, bare `mkifs` entries,
+  `[type=link] /tmp=/dev/shmem`, the loader plus `libc.so`, `libgcc_s.so.1`, `libm.so`,
+  `libz.so` and `libtracelog.so.1`, and the official
+  `/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2` interpreter link. The boot script starts
+  `devc-ser8250 &` and installs `pipe` and `cat`.
+
+### Changed
+
+- Host test suite is 98 tests (94 passing, 4 QNX-preprocessing skips without `gcc`); the
+  preprocessing tests pass 5/5 in the Linux container and `npm run check:c` passes 52 checks.
+
 ## [1.0.2] - 2026-11-26
 
 A second critical-defect pass on the generated harness, the analysis semantics and the QNX image

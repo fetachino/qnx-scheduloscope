@@ -120,7 +120,7 @@ typedef struct {
 static void server_main(void *raw) {
     server_arg *arg = (server_arg *)raw;
     const ss_channel_def *def = &ss_channel_defs[arg->channel];
-    int client = -1;
+    ss_client_id client = -1;
     char message[64];
     /*
      * A server cannot be stopped by a flag alone: it is blocked in receive.

@@ -240,7 +240,7 @@ harness start from the same inputs and are intended to stay consistent.
 
 ## Verification
 
-Everything that can be checked on a host is checked on a host: 96 tests (92 run, 4
+Everything that can be checked on a host is checked on a host: 98 tests (94 run, 4
 QNX-preprocessing skips without `gcc`), a TypeScript build with `strict` and
 `noUncheckedIndexedAccess`, and a CI job that compiles the generated
 harness with `gcc -Wall -Wextra -Wundef -Werror`, runs it, and exercises its failure, RPC-chain and teardown
@@ -248,7 +248,7 @@ paths under AddressSanitizer and UndefinedBehaviorSanitizer.
 
 | Area | Status |
 | --- | --- |
-| Full test suite | 96 tests: 92 pass, 4 skip without `gcc`; 5/5 QNX preprocessing tests pass in the Linux container |
+| Full test suite | 98 tests: 94 pass, 4 skip without `gcc`; 5/5 QNX preprocessing tests pass in the Linux container |
 | RTA against hand-computed cases | passing (see `tests/rta.test.ts`) |
 | Simulator semantics (PI, PCP, RR, sporadic, ISR) | passing |
 | Report and SVG generation | passing |

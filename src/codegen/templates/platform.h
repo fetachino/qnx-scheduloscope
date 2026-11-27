@@ -9,6 +9,7 @@
 #ifndef SS_PLATFORM_H
 #define SS_PLATFORM_H
 
+#include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -20,9 +21,8 @@
 #define SS_PROTO_INHERIT 1
 #define SS_PROTO_PROTECT 2
 
-/* pthread_t is an unsigned long on every platform QNX supports. */
 typedef struct ss_thread {
-    unsigned long handle;
+    pthread_t handle;
     int started;
 } ss_thread;
 
@@ -44,8 +44,12 @@ typedef struct ss_gate {
     void *impl;
 } ss_gate;
 
-/* Pulse code used only by the shutdown path; never a service request. */
-#define SS_STOP_PULSE_CODE 0x5353
+/*
+ * Pulse code used only by the shutdown path; never a service request.
+ * _pulse.code is int8_t and MsgSendPulse takes an 8-bit code, so this must fit
+ * in the positive user range (0..127), not a 16-bit sentinel.
+ */
+#define SS_STOP_PULSE_CODE 0x53
 /* 0 = success, 1 = timeout, -1 = not started or error. */
 #define SS_JOIN_TIMEOUT 1
 
@@ -90,8 +94,10 @@ int ss_mutex_unlock(ss_mutex *m);
 
 int ss_channel_create(ss_channel *c, int fixed_priority);
 void ss_channel_destroy(ss_channel *c);
-int ss_channel_recv(ss_channel *c, void *buf, size_t len, int *client);
-int ss_channel_reply(ss_channel *c, int client, const void *buf, size_t len);
+/* QNX 8's rcvid_t is 64-bit; the POSIX backend uses a small slot index. */
+typedef int64_t ss_client_id;
+int ss_channel_recv(ss_channel *c, void *buf, size_t len, ss_client_id *client);
+int ss_channel_reply(ss_channel *c, ss_client_id client, const void *buf, size_t len);
 int ss_channel_send(ss_channel *c, const void *buf, size_t len);
 /* Explicit shutdown request: no service handler runs and no reply is awaited. */
 int ss_channel_send_stop(ss_channel *c);

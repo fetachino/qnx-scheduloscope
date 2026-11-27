@@ -6,32 +6,44 @@
 #
 # This is a starting point, not a tested boot image: it has not been built or
 # booted in this project because the QNX SDP was not available.
-# The harness is dynamically linked. QNX 8 images need libc.so, libgcc_s.so.1
-# and the dynamic loader ldqnx-64.so.2; the loader must be reachable at the
-# absolute path /usr/lib/ldqnx-64.so.2 recorded as the ELF interpreter.
+# The harness is dynamically linked. In addition to libc.so and libgcc_s.so.1,
+# this image includes libm.so, libz.so and libtracelog.so.1 (the QNX
+# documentation's minimal shared-library set). The loader must be reachable at
+# the absolute path /usr/lib/ldqnx-64.so.2 recorded as the ELF interpreter.
 
 [virtual=x86_64,elf] .bootstrap = {
-    startup-x86_64 -v
+    startup-x86 -v
     PATH=/proc/boot:/bin:/usr/bin LD_LIBRARY_PATH=/proc/boot:/lib:/usr/lib
     procnto-smp-instr -P 63
 }
 
 [+script] .script = {
-    devc-ser8250
+    # The serial manager is a daemon; without & the script never reaches the harness.
+    devc-ser8250 &
     pipe
-    # /tmp is the in-image, writable directory created below.
+    # Put the harness output on the serial console as well as in the JSON file.
+    reopen /dev/ser1
+    # /tmp is a link to the kernel's in-memory /dev/shmem, which is writable.
     /proc/boot/scheduloscope-harness -d 30000 -o /tmp/report.json
+    cat /tmp/report.json
 }
 
-# In-memory directory the harness can write to even without a disk driver.
-[type=dir perms=0777] /tmp
+# The IFS is mounted read-only, so /tmp cannot be a plain image directory.
+[type=link] /tmp=/dev/shmem
 
-[data=copy] /proc/boot = {
-    scheduloscope-harness
-    $QNX_TARGET/x86_64/lib/ldqnx-64.so.2
-    $QNX_TARGET/x86_64/lib/libc.so
-    $QNX_TARGET/x86_64/lib/libgcc_s.so.1
-}
-[type=link] /usr/lib/ldqnx-64.so.2=/proc/boot/ldqnx-64.so.2
+# mkifs' default prefix is proc/boot: these entries land in /proc/boot.
+# [data=copy] applies to the executable, not to a directory of files.
+[data=copy] scheduloscope-harness
+# Every command named in .script must also be present in the image.
+devc-ser8250
+pipe
+cat
+${QNX_TARGET}/x86_64/lib/ldqnx-64.so.2
+${QNX_TARGET}/x86_64/lib/libc.so
+${QNX_TARGET}/x86_64/lib/libgcc_s.so.1
+${QNX_TARGET}/x86_64/lib/libm.so
+${QNX_TARGET}/x86_64/lib/libz.so
+${QNX_TARGET}/x86_64/lib/libtracelog.so.1
+/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2
 
 # System: {{SYSTEM_NAME}}

@@ -156,14 +156,14 @@ int ss_thread_start(ss_thread *t, const char *name, int priority, int policy,
         return -1;
     }
     if (name) pthread_setname_np(thread, name);
-    t->handle = (unsigned long)thread;
+    t->handle = thread;
     t->started = 1;
     return 0;
 }
 
 int ss_thread_join(ss_thread *t) {
     if (!t || !t->started) return -1;
-    int rc = pthread_join((pthread_t)t->handle, NULL);
+    int rc = pthread_join(t->handle, NULL);
     if (rc == 0) t->started = 0;
     return rc == 0 ? 0 : -1;
 }
@@ -181,7 +181,7 @@ int ss_thread_join_timeout(ss_thread *t, uint64_t timeout_ms) {
         deadline.tv_sec++;
         deadline.tv_nsec -= 1000000000L;
     }
-    int rc = pthread_timedjoin((pthread_t)t->handle, NULL, &deadline);
+    int rc = pthread_timedjoin(t->handle, NULL, &deadline);
     if (rc == 0) {
         t->started = 0;
         return 0;
@@ -295,6 +295,9 @@ int ss_mutex_init(ss_mutex *m, int protocol, int ceiling) {
     } else if (protocol == SS_PROTO_PROTECT) {
         rc = pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_PROTECT);
         if (rc == 0) rc = pthread_mutexattr_setprioceiling(&attr, ceiling);
+    } else {
+        /* QNX defaults a mutex to PTHREAD_PRIO_INHERIT; "none" must be explicit. */
+        rc = pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_NONE);
     }
     if (rc != 0) {
         fprintf(stderr,
@@ -392,12 +395,12 @@ void ss_channel_destroy(ss_channel *c) {
     c->impl = NULL;
 }
 
-int ss_channel_recv(ss_channel *c, void *buf, size_t len, int *client) {
+int ss_channel_recv(ss_channel *c, void *buf, size_t len, ss_client_id *client) {
     channel_impl *impl = (channel_impl *)c->impl;
     if (!impl) return -1;
     struct _msg_info info;
     memset(&info, 0, sizeof(info));
-    int rcvid = MsgReceive(impl->chid, buf, len, &info);
+    rcvid_t rcvid = MsgReceive(impl->chid, buf, len, &info);
     if (rcvid == -1) return -1;
     if (rcvid == 0) {
         if (len < sizeof(struct _pulse)) return -1;
@@ -406,13 +409,13 @@ int ss_channel_recv(ss_channel *c, void *buf, size_t len, int *client) {
         /* A stop is not a request: no handler, no reply. */
         return pulse.code == SS_STOP_PULSE_CODE ? 1 : -1;
     }
-    *client = rcvid;
+    *client = (ss_client_id)rcvid;
     return 0;
 }
 
-int ss_channel_reply(ss_channel *c, int client, const void *buf, size_t len) {
+int ss_channel_reply(ss_channel *c, ss_client_id client, const void *buf, size_t len) {
     (void)c;
-    return MsgReply(client, 0, buf, len) == 0 ? 0 : -1;
+    return MsgReply((rcvid_t)client, 0, buf, len) == 0 ? 0 : -1;
 }
 
 int ss_channel_send(ss_channel *c, const void *buf, size_t len) {

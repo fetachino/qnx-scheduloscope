@@ -5,9 +5,10 @@
 #   make qnx-arm  build for aarch64le
 #   make run    run the host build for one hyperperiod
 #
-# The qnx targets produce a dynamically linked binary. The generated
-# image.build.template copies libc.so and libgcc_s.so.1 next to it, so the image
-# runs without a separate library installation.
+# The qnx targets produce a dynamically linked binary. -D_QNX_SOURCE is required
+# with -std=c11; otherwise qcc hides the POSIX and QNX OS declarations this
+# harness uses. The generated image includes the loader and the shared libraries
+# it needs, so it runs without a separate library installation.
 
 CC ?= cc
 CFLAGS ?= -O2 -g -Wall -Wextra -Wundef -std=c11 -D_GNU_SOURCE
@@ -26,10 +27,10 @@ $(TARGET): $(COMMON) platform_posix.c
 	$(CC) $(CFLAGS) -o $@ harness.c platform_posix.c $(LDLIBS)
 
 qnx:
-	qcc -V gcc_ntox86_64 -O2 -g -Wall -Wextra -Wundef -std=c11 -o $(TARGET) harness.c platform_qnx.c
+	qcc -V gcc_ntox86_64 -O2 -g -Wall -Wextra -Wundef -std=c11 -D_QNX_SOURCE -o $(TARGET) harness.c platform_qnx.c
 
 qnx-arm:
-	qcc -V gcc_ntoaarch64le -O2 -g -Wall -Wextra -Wundef -std=c11 -o $(TARGET) harness.c platform_qnx.c
+	qcc -V gcc_ntoaarch64le -O2 -g -Wall -Wextra -Wundef -std=c11 -D_QNX_SOURCE -o $(TARGET) harness.c platform_qnx.c
 
 run: host
 	./$(TARGET) -o report.json

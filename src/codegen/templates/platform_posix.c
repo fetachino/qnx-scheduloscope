@@ -142,14 +142,14 @@ int ss_thread_start(ss_thread *t, const char *name, int priority, int policy,
         snprintf(trimmed, sizeof(trimmed), "%s", name);
         pthread_setname_np(thread, trimmed);
     }
-    t->handle = (unsigned long)thread;
+    t->handle = thread;
     t->started = 1;
     return 0;
 }
 
 int ss_thread_join(ss_thread *t) {
     if (!t || !t->started) return -1;
-    int rc = pthread_join((pthread_t)t->handle, NULL);
+    int rc = pthread_join(t->handle, NULL);
     if (rc == 0) t->started = 0;
     return rc == 0 ? 0 : -1;
 }
@@ -167,7 +167,7 @@ int ss_thread_join_timeout(ss_thread *t, uint64_t timeout_ms) {
         deadline.tv_sec++;
         deadline.tv_nsec -= 1000000000L;
     }
-    int rc = pthread_timedjoin_np((pthread_t)t->handle, NULL, &deadline);
+    int rc = pthread_timedjoin_np(t->handle, NULL, &deadline);
     if (rc == 0) {
         t->started = 0;
         return 0;
@@ -407,7 +407,7 @@ void ss_channel_destroy(ss_channel *c) {
     c->impl = NULL;
 }
 
-int ss_channel_recv(ss_channel *c, void *buf, size_t len, int *client) {
+int ss_channel_recv(ss_channel *c, void *buf, size_t len, ss_client_id *client) {
     (void)buf;
     (void)len;
     channel_impl *impl = (channel_impl *)c->impl;
@@ -432,7 +432,7 @@ int ss_channel_recv(ss_channel *c, void *buf, size_t len, int *client) {
     return 0;
 }
 
-int ss_channel_reply(ss_channel *c, int client, const void *buf, size_t len) {
+int ss_channel_reply(ss_channel *c, ss_client_id client, const void *buf, size_t len) {
     (void)buf;
     (void)len;
     channel_impl *impl = (channel_impl *)c->impl;

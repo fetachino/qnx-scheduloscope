@@ -8,11 +8,11 @@ with `qcc`, and the row says so.
 
 | Item | Version |
 | --- | --- |
-| OS | Windows 11 24H2 (x86_64) |
+| OS | Windows 11 Home 10.0.26300 (x86_64) |
 | Node | 24.19.0 |
 | npm | 11.17.0 |
 | TypeScript | 5.6.3, `strict`, `noUncheckedIndexedAccess` |
-| C compiler | `gcc 13` inside the official `gcc:13` container image; Debian `gcc 12` for the preprocessing tests |
+| C compiler | `gcc 13` for the documented container example; Debian `gcc 12` (bookworm) for the 52-check harness and the QNX preprocessing tests |
 | Docker | 29.9.2 |
 | QNX SDP | not installed, see *The QNX gap* |
 
@@ -23,7 +23,7 @@ npm ci
 npm test        # tsc -p tsconfig.json && node scripts/test.mjs
 ```
 
-Result: **96 tests, 92 passing, 0 failing, 4 skipped**, about 3 seconds. The four skips are the QNX preprocessing tests, which need `gcc`; the same file passes in the Linux container described below (5/5).
+Result: **98 tests, 94 passing, 0 failing, 4 skipped**, about 3 seconds. The four skips are the QNX preprocessing tests, which need `gcc`; the same file passes in the Linux container described below (5/5).
 
 | File | Tests | Covers |
 | --- | --- | --- |
@@ -33,7 +33,7 @@ Result: **96 tests, 92 passing, 0 failing, 4 skipped**, about 3 seconds. The fou
 | `tests/rta.test.ts` | 9 | Hand-computed response times, inheritance vs no inheritance, interrupt terms, divergence. |
 | `tests/sim.test.ts` | 11 | Determinism, priority order, round robin, sporadic budget, fixed-priority channels, PI and no-PI inversion, example model. |
 | `tests/report.test.ts` | 7 | Summary numbers, Markdown and HTML structure, HTML escaping, diagnostics merging, and an aperiodic task with no deadline rendered as `none`. |
-| `tests/codegen.test.ts` | 19 | Generated C contents, real tabs in the Makefile, `-Wundef`, `_NTO_CHF_FIXED_PRIORITY`, the priority ability, PCP ceilings, the loader/link in the image build file, the start gate and stop protocol, unsupported segments, interrupt reporting, response-time definition, teardown order, no report on an invalid run. |
+| `tests/codegen.test.ts` | 21 | Generated C contents, real tabs in the Makefile, `-Wundef`, `-D_QNX_SOURCE` on both QNX targets, `_NTO_CHF_FIXED_PRIORITY`, the priority ability, PCP ceilings, explicit `PTHREAD_PRIO_NONE`, `pthread_t` thread handles, 64-bit receive IDs, the loader/link in the image build file, the start gate and stop protocol, unsupported segments, interrupt reporting, response-time definition, teardown order, no report on an invalid run. |
 | `tests/qnx-backend.test.ts` | 5 | Preprocesses the generated QNX source with stub headers: `PROCMGR_AID_PRIORITY` at priority 70, at a PCP ceiling of 70, none at 60, no undefined `SS_` macro. |
 | `tests/cli.test.ts` | 8 | Exit codes 0/1/2, `--json`, `gen`, `init --force`, missing file handling. |
 | `tests/api.test.ts` | 1 | The whole pipeline through the public entry point. |
@@ -138,12 +138,19 @@ and a normal three-service RPC-chain teardown are compiled with
 `-fsanitize=address,undefined`; both runs report no leak, memory error or undefined behaviour.
 These are host checks of the C, not QNX execution. Under Docker's default capability set,
 LeakSanitizer needs `CAP_SYS_PTRACE` to inspect the finished process; add
-`--cap-add=SYS_PTRACE` to the container. Without it, ASan can abort with repeated `AddressSanitizer:DEADLYSIGNAL`
-even though the same binary passes natively, so that mode is not treated as a pass.
+`--cap-add=SYS_PTRACE` to the container. On Docker Desktop, ASan can also abort with repeated
+`AddressSanitizer:DEADLYSIGNAL` when the host exposes high mmap ASLR entropy; the reproducible run
+below sets `vm.mmap_rnd_bits=28` in a privileged container. Without either workaround, repeated
+`DEADLYSIGNAL` is not a pass.
 
 ```bash
 docker run --rm --cap-add=SYS_PTRACE -v "$PWD:/w" -w /w node:22-bookworm sh -c \
   "apt-get update -qq && apt-get install -y -qq gcc libc6-dev && node scripts/c-harness-check.mjs"
+
+# Docker Desktop only, if the command above loops on AddressSanitizer:DEADLYSIGNAL:
+docker run --rm --privileged -v "$PWD:/w" -w /w node:22-bookworm sh -c \
+  "apt-get update -qq && apt-get install -y -qq gcc libc6-dev && \
+   sysctl -w vm.mmap_rnd_bits=28 >/dev/null && node scripts/c-harness-check.mjs"
 ```
 
 ### Shutdown and startup protocol
@@ -165,23 +172,58 @@ may still be using them. `ss_shutdown()` is always the last call.
 ### Loader in `image.build.template`
 
 QNX 8's ELF interpreter is `/usr/lib/ldqnx-64.so.2`. The loader is a separate shared object from
-`libc.so` in QNX 8. The template copies the target loader to `/proc/boot/ldqnx-64.so.2` and creates
-the interpreter path with:
+`libc.so` in QNX 8. The template uses the documented x86_64 startup name `startup-x86` (the 8.0
+[`startup-x86`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/s/startup-x86.html)
+page lists x86_64 as its target), places the target loader, `libc.so`, `libgcc_s.so.1`, `libm.so`,
+`libz.so` and `libtracelog.so.1` under the default `mkifs` prefix `proc/boot`, and uses the official
+shared-library snippet for the interpreter path:
 
 ```
-[type=link] /usr/lib/ldqnx-64.so.2=/proc/boot/ldqnx-64.so.2
+[data=copy] scheduloscope-harness
+devc-ser8250
+pipe
+cat
+${QNX_TARGET}/x86_64/lib/ldqnx-64.so.2
+${QNX_TARGET}/x86_64/lib/libc.so
+${QNX_TARGET}/x86_64/lib/libgcc_s.so.1
+${QNX_TARGET}/x86_64/lib/libm.so
+${QNX_TARGET}/x86_64/lib/libz.so
+${QNX_TARGET}/x86_64/lib/libtracelog.so.1
+/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2
 ```
 
-It also copies `libc.so` and `libgcc_s.so.1`. The official [shared libraries](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.building/topic/config/shared_libraries.html)
-page gives the equivalent buildfile snippet `libc.so`, `libgcc_s.so.1`,
-`/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2`; the [system buildfile sample](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.building/topic/buildfiles/buildfile_structure.html)
-uses `procmgr_symlink ../../proc/boot/ldqnx-64.so.2 /usr/lib/ldqnx-64.so.2` in its startup script.
+The official [shared libraries](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.building/topic/config/shared_libraries.html)
+form is used instead of an earlier absolute-target symlink: it creates the interpreter entry in the
+same `mkifs` pass as the loader. Whether this form also creates a missing `/usr/lib` parent, or
+needs an explicit `[type=dir] /usr/lib`, is one of the details that still has to be confirmed on an
+SDP machine.
+The `.script` starts the serial driver as `devc-ser8250 &`: `devc-ser8250` is a daemon, so without
+`&` the boot script would wait in the driver and never reach the harness. `pipe` daemonizes by
+default and therefore needs no `&` (the [pipe utility](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/p/pipe.html)
+documents `-d` as the option that *disables* daemonizing).
+
+Earlier drafts wrote `[data=copy] /proc/boot = { ... }`. That is an inline file definition, not a
+directory copy: it would create one file at the default target path instead of installing the
+harness and the libraries. The current form follows the [location of files](https://qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.building/topic/buildfiles/nto_files_target.html)
+rule that bare entries land under `/proc/boot`, and the [`[data=copy]`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.building/topic/buildfiles/buildfile_syntax.html)
+attribute attaches only to the next file. Every command named in `.script` is also a bare entry:
+the [minimal configuration](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.building/topic/config/minimal_configuration.html)
+includes `devc-ser8250`, and its shared-library set is the one used here. The [system buildfile sample](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.building/topic/buildfiles/buildfile_structure.html)
+shows the equivalent runtime `procmgr_symlink ../../proc/boot/ldqnx-64.so.2 /usr/lib/ldqnx-64.so.2`;
+the template uses the official `mkifs` shared-library form above instead.
 The template was **not** run through `mkifs` in this verification pass: without the SDP its exact
 output cannot be verified, so it remains labelled unbuilt. The filename and interpreter path are
 the ones the QNX 8 documentation uses; the loader's `SONAME`/`DT_NEEDED` entries were not
 inspected without the SDP.
-On an SDP machine the remaining check is `readelf -d $QNX_TARGET/x86_64/lib/ldqnx-64.so.2`, then
-`mkifs` and a boot that runs `scheduloscope-harness`.
+
+`/tmp` cannot be a plain directory in the IFS: `mount_ifs` mounts the image read-only by default
+(see [`mount_ifs`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mount_ifs.html)).
+The template therefore uses `[type=link] /tmp=/dev/shmem`; QNX provides `/dev/shmem` with `procnto`
+and it supports simple files, which is all the single JSON report needs. The [mkifs notes](https://qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mkifs.html)
+recommend `devb-ram` or `devf-ram` for a production `/tmp`, so this is explicitly a demonstration
+choice, not a production storage design. On an SDP machine the remaining check is
+`ntox86_64-readelf -d "$QNX_TARGET/x86_64/lib/ldqnx-64.so.2"`, then `mkifs` and a boot that runs
+`scheduloscope-harness`.
 
 ## QNX API review against the 8.0 documentation
 
@@ -193,14 +235,17 @@ it is recorded as such. Each row names the page it was checked against.
 | --- | --- | --- |
 | [`pthread_attr_setschedpolicy`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_attr_setschedpolicy.html) | `SCHED_FIFO`, `SCHED_RR`, `SCHED_SPORADIC` per task, with `PTHREAD_EXPLICIT_SCHED`. | Correct. The RR timeslice is left at the kernel default of four clock periods; the model assumes the same 4 ms. |
 | [`sched_param`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/s/sched_param.html) | `sched_ss_init_budget`, `sched_ss_repl_period`, `sched_ss_low_priority`, `sched_ss_max_repl`. | Correct field names. `pthread_attr_setschedparam` returns `EINVAL` only when the period is *shorter* than the budget, so equality is legal; the validator was changed to accept it. |
-| [`pthread_mutexattr_setprotocol`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_mutexattr_setprotocol.html) / [`pthread_mutexattr_setprioceiling`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_mutexattr_setprioceiling.html) | `PTHREAD_PRIO_INHERIT` or `PTHREAD_PRIO_PROTECT` plus `pthread_mutexattr_setprioceiling`. Every attribute call and `pthread_mutex_init` is checked, and a `protect` mutex's ceiling is read back with `pthread_mutex_getprioceiling` and compared; a failure or mismatch stops the run with the ability/PCP diagnostic instead of using a lower ceiling. | Correct, and the QNX default is `PTHREAD_PRIO_INHERIT`, which is why `protocol` defaults to `inherit` in the model. The workload's ability threshold includes `protect` ceilings, not only task priorities. |
-| [`MsgSendPulse`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/m/msgsendpulse.html) / `pthread_timedjoin` | Shutdown sends a pulse with code `0x5353` at priority `-1` (inherit the sender), and joins server threads with `pthread_timedjoin`. The POSIX host uses `pthread_timedjoin_np` with an absolute `CLOCK_REALTIME` deadline. | Correct. The pulse is not a normal request: `MsgReceive` identifies it as `struct _pulse`, the server exits without running the handler or replying, and the join is bounded. |
+| [`pthread_mutexattr_setprotocol`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_mutexattr_setprotocol.html) / [`pthread_mutexattr_setprioceiling`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_mutexattr_setprioceiling.html) | `PTHREAD_PRIO_INHERIT` or `PTHREAD_PRIO_PROTECT` plus `pthread_mutexattr_setprioceiling`. Every attribute call and `pthread_mutex_init` is checked, and a `protect` mutex's ceiling is read back with `pthread_mutex_getprioceiling` and compared; a failure or mismatch stops the run with the ability/PCP diagnostic instead of using a lower ceiling. | Correct. The QNX default is `PTHREAD_PRIO_INHERIT`, which is why `protocol` defaults to `inherit` in the model; a `none` resource now sets `PTHREAD_PRIO_NONE` explicitly instead of inheriting that default. The workload's ability threshold includes `protect` ceilings, not only task priorities. |
+| [`MsgSendPulse`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/m/msgsendpulse.html) / [`pthread_timedjoin`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_timedjoin.html) | Shutdown sends a pulse with code `0x53` at priority `-1` (inherit the sender), and joins server threads with `pthread_timedjoin`. The POSIX host uses `pthread_timedjoin_np` with an absolute `CLOCK_REALTIME` deadline. | Corrected in Phase 3: `struct _pulse.code` is `int8_t` and `MsgSendPulse` takes an 8-bit code, so the old 16-bit sentinel `0x5353` was truncated and could never match. `0x53` is in the documented positive user range and is not a service request. The pulse is not a normal request: `MsgReceive` identifies it as `struct _pulse`, the server exits without running the handler or replying, and the join is bounded. |
+| [`pthread_create`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_create.html) / [`pthread_join`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_join.html) / [`pthread_timedjoin`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/pthread_timedjoin.html) | Each worker and server thread is stored in `ss_thread.handle` and joined by value. | Corrected in Phase 3: the handle is the exact `pthread_t`, not `unsigned long` plus casts. That removes an assumption about the SDK's integer width and any truncation on a target where `pthread_t` is not an `unsigned long`. |
 | [`ChannelCreate`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/channelcreate.html) / [`ConnectAttach`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/connectattach.html) | One channel per modelled server, side-channel connection, `_NTO_CHF_FIXED_PRIORITY` when the model asks for it. | Correct. `_NTO_CHF_FIXED_PRIORITY` turns off message-driven inheritance, which is what the model means by `fixedPriority: true`. |
-| [`MsgSend`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/m/msgsend.html) / `MsgReceive` / `MsgReply` | Client sends, server thread receives and replies. | Corrected: `MsgSend` now passes a 64-byte reply buffer, because the server does reply and a client that passes `NULL, 0` cannot receive it. |
+| [`MsgSend`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/m/msgsend.html) / [`MsgReceive`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/m/msgreceive.html) / [`MsgReply`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/m/msgreply.html) | Client sends, server thread receives and replies. | Corrected: `MsgSend` passes a 64-byte reply buffer, because the server does reply and a client that passes `NULL, 0` cannot receive it. Receive IDs are now `ss_client_id` (`int64_t`) end to end: the [QNX 8 migration notes](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.qnxsdp.migration/topic/kernel.html) say `rcvid_t` changed from 32-bit `int` to 64-bit signed, so the old `int` parameter would truncate a receive ID before `MsgReply`. |
 | [`ChannelDestroy`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/channeldestroy.html) | Both error paths and the shutdown path destroy the channel. | Corrected earlier from `ConnectDetach`, which detaches the connection, not the channel. |
 | [`ClockCycles`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/clockcycles.html) | Start and end timestamps, normalised with `cycles_per_sec` from `SYSPAGE_ENTRY(qtime)`. | Correct; cycle counts are the right clock for sub-microsecond jobs. |
 | [`procmgr_ability`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/procmgr_ability.html) | Asks for `PROCMGR_AID_PRIORITY` when a task priority or a `protect` mutex ceiling exceeds the `SS_PRIVILEGED_CEILING` generated from the model (63 by default). | Corrected. The check read an undefined macro and was silently compiled out; it now reads `SS_MAX_PRIORITY` from the generated `workload_config.h`. Without the ability `pthread_attr_setschedparam` or `pthread_mutexattr_setprioceiling` fails, and the harness stops with an explanation. The message points to root or to granting `PROCMGR_AID_PRIORITY`, not to changing `procnto -P`. |
-| [`mkifs`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mkifs.html) | `image.build.template`: `[virtual=x86_64,elf]`, `startup-x86_64`, `procnto-smp-instr -P 63`, a writable `/tmp`, and a copy section with the harness, `ldqnx-64.so.2`, `libc.so` and `libgcc_s.so.1`; `[type=link] /usr/lib/ldqnx-64.so.2=/proc/boot/ldqnx-64.so.2` supplies the ELF interpreter path. | Corrected the startup name (it is `startup-x86_64`, not `startup-x86-64`), matched the QNX 8 dynamic loader and its `/usr/lib/ldqnx-64.so.2` symlink, matched the dynamic link the Makefile produces, and gave the harness a directory it can write the report to. Not built or booted in this verification pass. |
+| [`mkifs`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mkifs.html) | `image.build.template`: `[virtual=x86_64,elf]`, `startup-x86`, `procnto-smp-instr -P 63`, `[type=link] /tmp=/dev/shmem`, and the harness plus `ldqnx-64.so.2`, `libc.so`, `libgcc_s.so.1`, `libm.so`, `libz.so` and `libtracelog.so.1` at the default `/proc/boot` prefix; `/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2` supplies the ELF interpreter path. The `.script` starts `devc-ser8250 &` (a daemon would otherwise block the script) and installs `devc-ser8250`, `pipe` and `cat`. | Corrected in Phase 3. The 8.0 utilities reference names `startup-x86` for x86_64; the old `startup-x86_64` was not the documented 8.0 name. The old `[data=copy] /proc/boot = { ... }` was an inline file, not a copy list, so the harness and libraries would not have been installed. `/tmp` is now a link to the kernel-provided `/dev/shmem` because the IFS is read-only. The loader link uses the official `/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2` form. Still not built or booted in this verification pass. |
+
+Both QNX Makefile targets pass `-std=c11 -D_QNX_SOURCE`. The [qcc manual](https://qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/q/qcc.html) says `-std=` restricts the libraries to that ISO standard and hides POSIX/QNX declarations unless `_QNX_SOURCE` is defined. Without it, calls such as `pthread_timedjoin`, `pthread_setname_np` and `ChannelCreate` would be implicitly declared. This is the QNX counterpart to the host's `-D_GNU_SOURCE`, and the codegen test asserts both target lines carry it.
 
 The QNX source is also preprocessed in CI against stub headers with `-Wundef -Werror`
 (`tests/qnx-backend.test.ts`). That catches exactly the defect above, an `SS_` macro a source
@@ -242,26 +287,46 @@ approval; those interactive steps were not completed for this verification pass.
 the pipeline is therefore recorded as *build-ready*, and the review above is the strongest
 statement that can be made without an SDP.
 
-Closing the gap takes four commands on a host with the SDP installed:
+### Exact commands for the next native pass
+
+Prerequisites: the QNX SDP 8.0 installed on a Windows or Linux host, an activated
+`qnxsdp-env.sh`, the x86_64 target libraries, and either a board or a QEMU setup that can boot
+the generated IFS. The commands below are the ones this project will run when that environment
+exists; none of them has been run here.
 
 ```bash
+# 1. Record the exact SDP and compiler versions.
 source ~/qnx800/qnxsdp-env.sh
-cd harness && make qnx
-scp scheduloscope-harness target:/tmp/ && ssh target /tmp/scheduloscope-harness -d 5000 -o /tmp/report.json
-```
-The QNX SDP 8.0 is distributed through the myQNX portal, and the QNX Everywhere programme
-requires an account with the licence accepted. Those steps were not completed for this
-verification pass, so the QNX half of the pipeline is labelled *build-ready* rather than
-*verified*. The exact commands to close the gap are in the generated `README.md`:
+qcc -V
+qcc -V gcc_ntox86_64 -v
+qcc -V gcc_ntoaarch64le -v
 
-```bash
-source ~/qnx800/qnxsdp-env.sh
-make qnx && scp scheduloscope-harness target:/tmp/
-ssh target /tmp/scheduloscope-harness -d 5000 -o /tmp/report.json
+# 2. Generate the harness from the example model.
+node dist/src/cli/main.js gen examples/motor-control.yaml --out harness
+cd harness
+
+# 3. Build both targets. Keep the AArch64 binary separate from the x86_64 one.
+make qnx
+cp scheduloscope-harness scheduloscope-harness-x86_64
+make qnx-arm
+mv scheduloscope-harness scheduloscope-harness-aarch64le
+
+# 4. Inspect the ELF interpreter and the loader's SONAME/DT_NEEDED before imaging.
+ntox86_64-readelf -l scheduloscope-harness-x86_64 | grep -i interpreter
+ntox86_64-readelf -d scheduloscope-harness-x86_64 | grep -E 'NEEDED|SONAME'
+ntox86_64-readelf -d "${QNX_TARGET}/x86_64/lib/ldqnx-64.so.2" | grep SONAME
+ntox86_64-readelf -p .QNX.command.line scheduloscope-harness-x86_64
+
+# 5. Build the image (x86_64 template only).
+mkifs -v image.build.template image.ifs
+
+# 6. Run the x86_64 image on the board or QEMU, then confirm the JSON says "platform": "qnx".
 ```
 
-Once that runs, `platform` in the JSON becomes `qnx` and the response times become real
-measurements. Until then, no QNX timing number appears anywhere in this repository.
+Step 4 is the missing evidence for the loader/SONAME rows. Step 5 is the missing `mkifs`
+evidence. Step 6 is the only step that produces QNX timing; until it runs, no QNX timing number
+appears anywhere in this repository. The generated `README.md` repeats the compile and run
+commands; this page adds the version capture, the loader inspection and the image build.
 
 ## Reproducing all of it
 
