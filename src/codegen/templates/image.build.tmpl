@@ -14,10 +14,14 @@
 # mkifs does not search the current directory, so the harness source is spelled
 # ./scheduloscope-harness; run mkifs from this directory.
 
-[image=20m]
-[virtual=x86_64,multiboot] .bootstrap = {
+# The QNX BIOS IPL (ipl-diskpc1 + ipl-diskpc2-fsq6) boots a
+# [virtual=x86_64,bios] image. The multiboot and ELF variants retain a
+# multiboot header, which ipl-diskpc2-fsq6 rejects as "Unsupported Multi-Boot".
+# The 8 MB image base leaves room for the BIOS preboot header and all libraries.
+[image=8m]
+[virtual=x86_64,bios] .bootstrap = {
     startup-x86 -D8250..115200 -zz
-    PATH=/proc/boot:/system/bin:/bin:/usr/bin:/sbin LD_LIBRARY_PATH=/proc/boot:/lib:/usr/lib
+    PATH=/proc/boot:/system/bin:/bin:/usr/bin:/sbin LD_LIBRARY_PATH=/proc/boot:/system/lib:/lib:/usr/lib
     procnto-smp-instr -P 63
 }
 
@@ -50,5 +54,22 @@ ${QNX_TARGET}/x86_64/lib/libgcc_s.so.1
 ${QNX_TARGET}/x86_64/lib/libm.so.3
 ${QNX_TARGET}/x86_64/usr/lib/libz.so.2
 ${QNX_TARGET}/x86_64/lib/libtracelog.so.1
+${QNX_TARGET}/x86_64/lib/libsecpol.so.1
+${QNX_TARGET}/x86_64/lib/libfsnotify.so.1
+
+# QNX 8 privileged services (devc-ser8250, pipe) resolve their full
+# dependency chain from the trusted /system/lib path. The /proc/boot copies
+# alone are enough for the harness but not for secure drivers, which report
+# "ldd:FATAL: Could not load library libsecpol.so.1" and lose the serial port.
+# Use real files here: a /system/lib symlink to /proc/boot is not followed by
+# the secure loader.
+/system/lib/ldqnx-64.so.2=${QNX_TARGET}/x86_64/usr/lib/ldqnx-64.so.2
+/system/lib/libc.so.6=${QNX_TARGET}/x86_64/lib/libc.so.6
+/system/lib/libgcc_s.so.1=${QNX_TARGET}/x86_64/lib/libgcc_s.so.1
+/system/lib/libm.so.3=${QNX_TARGET}/x86_64/lib/libm.so.3
+/system/lib/libz.so.2=${QNX_TARGET}/x86_64/usr/lib/libz.so.2
+/system/lib/libtracelog.so.1=${QNX_TARGET}/x86_64/lib/libtracelog.so.1
+/system/lib/libsecpol.so.1=${QNX_TARGET}/x86_64/lib/libsecpol.so.1
+/system/lib/libfsnotify.so.1=${QNX_TARGET}/x86_64/lib/libfsnotify.so.1
 
 # System: {{SYSTEM_NAME}}

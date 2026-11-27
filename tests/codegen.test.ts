@@ -193,8 +193,12 @@ test('the image build script installs the QNX 8.0.6 loader, libraries and a writ
   assert.match(build, /startup-x86 -D8250\.\.115200 -zz/);
   assert.doesNotMatch(build, /startup-x86_64/);
   assert.doesNotMatch(build, /startup-x86-64/);
-  assert.match(build, /\[virtual=x86_64,multiboot\]/);
-  assert.match(build, /\[image=20m\]/);
+  // ipl-diskpc2-fsq6 boots the BIOS image format. The multiboot and ELF
+  // variants retain a multiboot header and are rejected as "Unsupported
+  // Multi-Boot"; the BIOS image uses the `.bootstrap` section.
+  assert.match(build, /\[virtual=x86_64,bios\] \.bootstrap = \{/);
+  assert.doesNotMatch(build, /\[virtual=x86_64,multiboot\]/);
+  assert.match(build, /\[image=8m\]/);
   assert.match(build, /procnto-smp-instr -P 63/);
   // The IFS is mounted read-only, so /tmp must resolve to the kernel's shmem.
   assert.match(build, /\[type=link\] \/tmp=\/dev\/shmem/);
@@ -209,6 +213,12 @@ test('the image build script installs the QNX 8.0.6 loader, libraries and a writ
   assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libm\.so\.3/);
   assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/usr\/lib\/libz\.so\.2/);
   assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libtracelog\.so\.1/);
+  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libsecpol\.so\.1/);
+  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libfsnotify\.so\.1/);
+  // Secure services resolve libraries from /system/lib, not /proc/boot.
+  assert.match(build, /^\/system\/lib\/libsecpol\.so\.1=\$\{QNX_TARGET\}\/x86_64\/lib\/libsecpol\.so\.1$/m);
+  assert.match(build, /^\/system\/lib\/libfsnotify\.so\.1=\$\{QNX_TARGET\}\/x86_64\/lib\/libfsnotify\.so\.1$/m);
+  assert.match(build, /LD_LIBRARY_PATH=\/proc\/boot:\/system\/lib:\/lib:\/usr\/lib/);
   // mkifs expands host variables as ${NAME}, not $NAME.
   assert.doesNotMatch(build, /^\$QNX_TARGET/m);
   // Commands named by the boot script are copied into the image too.

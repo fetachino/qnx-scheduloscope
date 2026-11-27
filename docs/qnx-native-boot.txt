@@ -1,0 +1,35 @@
+QNX standalone BIOS IFS boot, QEMU 8.2.2 under WSL Ubuntu 24.04
+Command: qemu-system-x86_64 -accel tcg -cpu max -m 512M -smp 1 -nographic
+         -boot c -drive file=disk-test,format=raw,if=ide -no-reboot
+Artifacts: image.ifs 4,739,140 bytes; boot.part 11,362,304 bytes; disk-test 11,362,816 bytes
+
+QNX v1.2d Boot Loader:  .
+non UEFI or UEFI+CSM boot
+ACPI table not found (0x4746434d)
+System behaves poorly without PCID support.
+overriding mask for controller 2, vector_base 0
+[scheduloscope] the model contains interrupt sources; this harness runs threads, not ISR/IST handlers, so the measured response times exclude their interference
+task               started completed   skipped      late  deadline    min us   mean us    max us   lat max
+safety               14993     14993         7         7        14       309      1042      3693      3568
+control              15172     15172     14828     14685     29513       397      1447      6016      5111
+planner               5999      5999         1         1         2      1028      2287      8819      6200
+telemetry             1500      1500         0         0         0      3566      5369     12898      8898
+logger                1694      1694         0         0         0       735      2985     13817     13053
+window 30.005 s, system motor-control
+{
+  "system": "motor-control",
+  "duration_us": 30005375,
+  "platform": "qnx",
+  "scheduling": "enforced",
+  "response_time": "completion minus nominal release; includes activation latency, execution and blocking",
+  "model_includes_interrupts": true,
+  "interrupts_reproduced": false,
+  "tasks": [
+    {"name": "safety", "activations": 14993, "completed": 14993, "min_us": 309, "mean_us": 1042.5, "max_us": 3693, "max_activation_latency_us": 3568, "mean_activation_latency_us": 916.3, "misses": 7, "skipped": 7, "deadline_misses": 14},
+    {"name": "control", "activations": 15172, "completed": 15172, "min_us": 397, "mean_us": 1447.1, "max_us": 6016, "max_activation_latency_us": 5111, "mean_activation_latency_us": 1008.7, "misses": 14685, "skipped": 14828, "deadline_misses": 29513},
+    {"name": "planner", "activations": 5999, "completed": 5999, "min_us": 1028, "mean_us": 2287.4, "max_us": 8819, "max_activation_latency_us": 6200, "mean_activation_latency_us": 1258.7, "misses": 1, "skipped": 1, "deadline_misses": 2},
+    {"name": "telemetry", "activations": 1500, "completed": 1500, "min_us": 3566, "mean_us": 5368.5, "max_us": 12898, "max_activation_latency_us": 8898, "mean_activation_latency_us": 2428.4, "misses": 0, "skipped": 0, "deadline_misses": 0},
+    {"name": "logger", "activations": 1694, "completed": 1694, "min_us": 735, "mean_us": 2985.1, "max_us": 13817, "max_activation_latency_us": 13053, "mean_activation_latency_us": 2069.0, "misses": 0, "skipped": 0, "deadline_misses": 0}
+  ]
+}
+qemu-system-x86_64: terminating on signal 15 from pid 425 (timeout)

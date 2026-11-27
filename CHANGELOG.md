@@ -15,9 +15,13 @@ as a lower bound rather than a deadline pass in both HTML and CLI output. Host s
 
 Phase 3B installed QNX SDP 8.0.6 and validated the native path: `qcc` 12.2.0 built the harness for
 x86_64 and AArch64; the x86_64 binary ran on a one-vCPU QNX 8.0 QEMU guest and wrote a JSON report
-with `"platform": "qnx"`; the updated `image.build.template` built with `mkifs` (exit 0). The QSTI
-QEMU package stayed unavailable because its download requires an authenticated QSC session. The
-native run is not a hardware latency claim; see `docs/verification.md`.
+with `"platform": "qnx"`. The generated `image.build.template` now builds a standalone BIOS IFS
+(`[image=8m]`, `[virtual=x86_64,bios] .bootstrap`) with the full trusted `/system/lib` dependency
+chain; `mkqnx6fsimg` and `diskimage` turned it into its own QNX6 boot partition, and that disk was
+booted under QEMU TCG and produced the report. The QSTI QEMU package stayed unavailable because its
+download requires an authenticated QSC session; AArch64 remains compile-only for lack of a matching
+startup/BSP, and no hardware board was available. The native run is not a hardware latency claim;
+see `docs/verification.md`.
 
 Phase 3 source and build-configuration validation against the QNX SDP 8.0 reference. No SDP was
 installed, so this entry records corrections and tests only; it does not claim a native build,
@@ -35,10 +39,13 @@ image, boot or QNX timing.
   inheriting QNX's default `PTHREAD_PRIO_INHERIT`.
 - The stop pulse is `0x53`. `struct _pulse.code` is 8-bit, so the 1.0.2 sentinel `0x5353` was
   truncated and could never match.
-- `image.build.template` now uses `startup-x86`, `${QNX_TARGET}` paths, bare `mkifs` entries,
-  `[type=link] /tmp=/dev/shmem`, the loader plus `libc.so`, `libgcc_s.so.1`, `libm.so`,
-  `libz.so` and `libtracelog.so.1`, and the official
-  `/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2` interpreter link. The boot script starts
+- `image.build.template` now uses `[image=8m]`, `[virtual=x86_64,bios] .bootstrap`,
+  `startup-x86`, `${QNX_TARGET}` paths, bare `mkifs` entries, `[type=link] /tmp=/dev/shmem`, the
+  loader plus the versioned `libc`, `libgcc_s`, `libm`, `libz`, `libtracelog`, `libsecpol` and
+  `libfsnotify` files, and the official `/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2` interpreter link.
+  Real copies under `/system/lib` let privileged services such as `devc-ser8250` load
+  `libsecpol.so.1`, so `/dev/ser1` opens. The BIOS image replaced the multiboot image, whose header
+  the QNX partition loader rejects as `Unsupported Multi-Boot`. The boot script starts
   `devc-ser8250 &` and installs `pipe` and `cat`.
 
 ### Changed
