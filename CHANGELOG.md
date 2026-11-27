@@ -14,6 +14,10 @@ The report model-boundary callout now names QNX SDP 8.0.6, x86_64 KVM and AArch6
 evidence, and the repeat-run stress record, instead of referring only to Phase 3B. The callout still
 states that every number in the report is model output, not a target measurement.
 
+The README hero screenshot and the landing-page boundary note now use the same SDP 8.0.6, x86_64
+KVM and AArch64 TCG evidence wording, removing the last stale Phase 3B reference from the public
+landing page.
+
 Phase 5 added a 50-to-800-task scaling benchmark with JSON output and a repeatable QNX boot
 stress script. Three KVM boots and one TCG comparison all produced complete `platform: qnx`
 reports; KVM reduced the observed miss count and worst response versus TCG but remains an
