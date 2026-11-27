@@ -209,7 +209,7 @@
           <a class="button primary" href="demo/motor-control.html">Open the baseline report</a>
           <a class="button secondary" href="#tour">Take the three-report tour</a>
         </p>
-        <p class="hero-note"><span class="dot" aria-hidden="true"></span><span>Model and simulation output, not a QNX hardware measurement. The QNX backend is build-ready but was not compiled or booted here.</span></p>
+        <p class="hero-note"><span class="dot" aria-hidden="true"></span><span>Model and simulation output, not a target measurement. The QNX backend was compiled and run natively during Phase 3B; no QNX timing from this site is a hardware claim.</span></p>
         <div class="facts">
           <span><strong>v1.0.2</strong></span>
           <span>Apache-2.0</span>
@@ -348,7 +348,7 @@ npm test</code></pre>
         <table>
           <thead><tr><th scope="col">Backend</th><th scope="col">Purpose</th><th scope="col">Evidence</th></tr></thead>
           <tbody>
-            <tr><td>QNX</td><td>On-target workload measurement with QNX scheduling and IPC</td><td>Written against the 8.0 API and source-reviewed; not built or run in this project</td></tr>
+            <tr><td>QNX</td><td>On-target workload measurement with QNX scheduling and IPC</td><td>Compiled with QNX SDP 8.0.6; x86_64 harness run in a QEMU guest; AArch64 compile-only. See verification.</td></tr>
             <tr><td>POSIX host</td><td>Compile and exercise the same harness logic in CI</td><td>Built and tested on Linux with GCC and sanitizers; best-effort scheduling</td></tr>
           </tbody>
         </table>
@@ -365,14 +365,14 @@ npm test</code></pre>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/model-reference.md">Model reference</a><span>Every field, default, and unit.</span></li>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/qnx-semantics.md">QNX semantics</a><span>What the model reproduces and where it stops.</span></li>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/analysis-method.md">Analysis method</a><span>The response-time equation and each term.</span></li>
-        <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/verification.md">Verification</a><span>Commands, test results, and the QNX gap.</span></li>
+        <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/verification.md">Verification</a><span>Commands, test results, and the native QNX validation.</span></li>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/README.md">README</a><span>Quick start, architecture, and limitations.</span></li>
       </ul>
     </section>
 
     <section class="boundary" aria-labelledby="claims-title">
       <h2 id="claims-title">What this project does not claim</h2>
-      <p><strong>No QNX SDP was available during verification.</strong> The QNX backend and image template are build-ready and source-reviewed, not compiled, booted, or measured on a target here. No QNX timing number is presented as a measurement. The host test suite and POSIX harness checks are real, and their limits are documented.</p>
+      <p><strong>QNX SDP 8.0.6 was installed and the backend was compiled and run natively for Phase 3B.</strong> The image template builds with <code>mkifs</code>; standalone boot packaging and AArch64 runtime remain future work. No QNX timing number on this site is a hardware measurement. The host test suite and POSIX harness checks are real, and their limits are documented.</p>
     </section>
   </main>
 

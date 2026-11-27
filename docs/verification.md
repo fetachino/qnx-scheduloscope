@@ -14,7 +14,7 @@ with `qcc`, and the row says so.
 | TypeScript | 5.6.3, `strict`, `noUncheckedIndexedAccess` |
 | C compiler | `gcc 13` for the documented container example; Debian `gcc 12` (bookworm) for the 52-check harness and the QNX preprocessing tests |
 | Docker | 29.9.2 |
-| QNX SDP | not installed, see *The QNX gap* |
+| QNX SDP | 8.0.6 Stable (8.0 Build 141), installed at `D:/qnx800`; QNX GCC 12.2.0 |
 
 ## Automated tests
 
@@ -243,7 +243,7 @@ it is recorded as such. Each row names the page it was checked against.
 | [`ChannelDestroy`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/channeldestroy.html) | Both error paths and the shutdown path destroy the channel. | Corrected earlier from `ConnectDetach`, which detaches the connection, not the channel. |
 | [`ClockCycles`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/clockcycles.html) | Start and end timestamps, normalised with `cycles_per_sec` from `SYSPAGE_ENTRY(qtime)`. | Correct; cycle counts are the right clock for sub-microsecond jobs. |
 | [`procmgr_ability`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/procmgr_ability.html) | Asks for `PROCMGR_AID_PRIORITY` when a task priority or a `protect` mutex ceiling exceeds the `SS_PRIVILEGED_CEILING` generated from the model (63 by default). | Corrected. The check read an undefined macro and was silently compiled out; it now reads `SS_MAX_PRIORITY` from the generated `workload_config.h`. Without the ability `pthread_attr_setschedparam` or `pthread_mutexattr_setprioceiling` fails, and the harness stops with an explanation. The message points to root or to granting `PROCMGR_AID_PRIORITY`, not to changing `procnto -P`. |
-| [`mkifs`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mkifs.html) | `image.build.template`: `[virtual=x86_64,elf]`, `startup-x86`, `procnto-smp-instr -P 63`, `[type=link] /tmp=/dev/shmem`, and the harness plus `ldqnx-64.so.2`, `libc.so`, `libgcc_s.so.1`, `libm.so`, `libz.so` and `libtracelog.so.1` at the default `/proc/boot` prefix; `/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2` supplies the ELF interpreter path. The `.script` starts `devc-ser8250 &` (a daemon would otherwise block the script) and installs `devc-ser8250`, `pipe` and `cat`. | Corrected in Phase 3. The 8.0 utilities reference names `startup-x86` for x86_64; the old `startup-x86_64` was not the documented 8.0 name. The old `[data=copy] /proc/boot = { ... }` was an inline file, not a copy list, so the harness and libraries would not have been installed. `/tmp` is now a link to the kernel-provided `/dev/shmem` because the IFS is read-only. The loader link uses the official `/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2` form. Still not built or booted in this verification pass. |
+| [`mkifs`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mkifs.html) | `image.build.template`: `[virtual=x86_64,multiboot]`, `startup-x86`, `procnto-smp-instr -P 63`, `[type=link] /tmp=/dev/shmem`, and the harness plus `ldqnx-64.so.2`, `libc.so.6`, `libgcc_s.so.1`, `libm.so.3`, `libz.so.2` and `libtracelog.so.1` at the default `/proc/boot` prefix; `/usr/lib/ldqnx-64.so.2=/proc/boot/ldqnx-64.so.2` supplies the ELF interpreter path. The `.script` starts `devc-ser8250 &` (a daemon would otherwise block the script) and installs `devc-ser8250`, `pipe` and `cat`. | Corrected in Phase 3. The 8.0 utilities reference names `startup-x86` for x86_64; the old `startup-x86_64` was not the documented 8.0 name. The old `[data=copy] /proc/boot = { ... }` was an inline file, not a copy list, so the harness and libraries would not have been installed. `/tmp` is now a link to the kernel-provided `/dev/shmem` because the IFS is read-only. The loader link uses the official `/usr/lib/ldqnx-64.so.2=ldqnx-64.so.2` form. Built with QNX SDP 8.0.6 (`mkifs` exit 0); standalone boot packaging remains board-specific. |
 
 Both QNX Makefile targets pass `-std=c11 -D_QNX_SOURCE`. The [qcc manual](https://qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/q/qcc.html) says `-std=` restricts the libraries to that ISO standard and hides POSIX/QNX declarations unless `_QNX_SOURCE` is defined. Without it, calls such as `pthread_timedjoin`, `pthread_setname_np` and `ChannelCreate` would be implicitly declared. This is the QNX counterpart to the host's `-D_GNU_SOURCE`, and the codegen test asserts both target lines carry it.
 
@@ -258,75 +258,107 @@ the validator already warns about. And `sched_ss_max_repl` must be in 1..`SS_REP
 defines as 65535, not the 32 an earlier draft of the validator claimed; the diagnostic is now an
 informational note that says so.
 
-## The QNX gap
+## Native QNX validation (Phase 3B)
 
-| Item | Status | Why |
-| --- | --- | --- |
-| QNX-specific C backend (`platform_qnx.c`) | **written, not executed** | Needs the QNX SDP 8.0 C library and headers. |
-| `Makefile` targets `qnx` (x86_64) and `qnx-arm` (aarch64le) | **not executed** | Same. |
-| `image.build.template` for a bootable QNX image | **not executed** | `mkifs` ships with the SDP. The template is x86_64 only; `qnx-arm` builds an AArch64 executable but has no matching image template. |
-| Analysis and simulation of QNX semantics | executed on the host | They are models of the OS, not the OS itself. |
+The QNX gap is closed on the Windows host used for this pass. QNX SDP 8.0.6 was installed with QNX Software Center under the QNX Everywhere non-commercial licence. Credentials and licence values are not reproduced here.
 
-### QNX SDK availability
+| Item | Native result |
+| --- | --- |
+| QNX SDP | 8.0.6 Stable (8.0 Build 141), installed at `D:/qnx800` |
+| QNX compiler | GCC 12.2.0 for `gcc_ntox86_64` and `gcc_ntoaarch64le` |
+| Host | Windows 11 Home 10.0.26300; WSL Ubuntu 24.04 for QEMU |
+| QEMU | 8.2.2 under WSL, KVM enabled, one vCPU |
+| x86_64 binary | `scheduloscope-harness`, 71,760 bytes, ELF64 PIE, AMD x86-64 |
+| AArch64 binary | `scheduloscope-harness-arm`, 72,720 bytes, ELF64 PIE, AArch64 |
+| Native runtime | QNX 8.0.0 guest, one processor, JSON `"platform": "qnx"` |
+| `mkifs` image | updated template built, exit 0; loader and libraries present |
 
-The 8.0 toolchain (`qcc`, `mkifs`, the target libraries) ships only inside the QNX Software
-Development Platform. The SDP was not available for this verification pass, so no QNX binary was
-built, run, or booted.
+### Toolchain and ELF evidence
 
-| Path | Check | Result |
-| --- | --- | --- |
-| QNX Everywhere landing page | `GET https://www.qnx.com/products/everywhere/` | 200. The page offers "free access to QNX SDP 8.0 for non-commercial use" and every download link leads to `https://www.qnx.com/account/login.html`. |
-| Download portal | `GET https://www.qnx.com/download/group.html?programid=29178` | 200, QNX Software Center download group, gated behind a myQNX sign-in and a licence acceptance form. No anonymous artefact URL exists. |
-| QNX Everywhere sign-up | `https://qnx.software/en/developers/get-started/qnx-everywhere` | 200. Requires an account, the non-commercial licence form and approval; none of that can be completed by a build script. |
-| Container image | `docker pull qnx/qnx-sdp:8.0` | `pull access denied ... repository does not exist`. QNX publishes no public SDP image; the Docker Hub hits are third-party QEMU demos, not official distributions, and were not used. |
-| QEMU | host check | No QEMU installed, and a QNX boot image has to be produced by `mkifs` from an installed SDP anyway, so QEMU does not remove the blocker. |
+`qcc -V` reported:
 
-The licence is the blocker, not the platform: the SDP runs on Windows and Linux. The QNX
-Everywhere programme requires a QNX account, acceptance of the non-commercial licence, and
-approval; those interactive steps were not completed for this verification pass. The QNX half of
-the pipeline is therefore recorded as *build-ready*, and the review above is the strongest
-statement that can be made without an SDP.
-
-### Exact commands for the next native pass
-
-Prerequisites: the QNX SDP 8.0 installed on a Windows or Linux host, an activated
-`qnxsdp-env.sh`, the x86_64 target libraries, and either a board or a QEMU setup that can boot
-the generated IFS. The commands below are the ones this project will run when that environment
-exists; none of them has been run here.
-
-```bash
-# 1. Record the exact SDP and compiler versions.
-source ~/qnx800/qnxsdp-env.sh
-qcc -V
-qcc -V gcc_ntox86_64 -v
-qcc -V gcc_ntoaarch64le -v
-
-# 2. Generate the harness from the example model.
-node dist/src/cli/main.js gen examples/motor-control.yaml --out harness
-cd harness
-
-# 3. Build both targets. Keep the AArch64 binary separate from the x86_64 one.
-make qnx
-cp scheduloscope-harness scheduloscope-harness-x86_64
-make qnx-arm
-mv scheduloscope-harness scheduloscope-harness-aarch64le
-
-# 4. Inspect the ELF interpreter and the loader's SONAME/DT_NEEDED before imaging.
-ntox86_64-readelf -l scheduloscope-harness-x86_64 | grep -i interpreter
-ntox86_64-readelf -d scheduloscope-harness-x86_64 | grep -E 'NEEDED|SONAME'
-ntox86_64-readelf -d "${QNX_TARGET}/x86_64/lib/ldqnx-64.so.2" | grep SONAME
-ntox86_64-readelf -p .QNX.command.line scheduloscope-harness-x86_64
-
-# 5. Build the image (x86_64 template only).
-mkifs -v image.build.template image.ifs
-
-# 6. Run the x86_64 image on the board or QEMU, then confirm the JSON says "platform": "qnx".
+```text
+cc: targets available in D:/qnx800/host/win64/x86_64/etc/qcc:
+    12.2.0,gcc_ntoaarch64le
+    12.2.0,gcc_ntoaarch64le_cxx
+    12.2.0,gcc_ntoaarch64le_gpp
+    12.2.0,gcc_ntox86_64 (default)
+    12.2.0,gcc_ntox86_64_cxx
+    12.2.0,gcc_ntox86_64_gpp
 ```
 
-Step 4 is the missing evidence for the loader/SONAME rows. Step 5 is the missing `mkifs`
-evidence. Step 6 is the only step that produces QNX timing; until it runs, no QNX timing number
-appears anywhere in this repository. The generated `README.md` repeats the compile and run
-commands; this page adds the version capture, the loader inspection and the image build.
+Both targets compiled through the generated `Makefile` (`make qnx` and `make qnx-arm`) with exit 0. The x86_64 ELF records:
+
+```text
+[Requesting program interpreter: /usr/lib/ldqnx-64.so.2]
+(NEEDED) Shared library: [libc.so.6]
+(NEEDED) Shared library: [libgcc_s.so.1]
+```
+
+The AArch64 ELF header reports `Class: ELF64`, `Type: DYN (Position-Independent Executable file)` and `Machine: AArch64`.
+
+### Native runtime
+
+The QNX image was produced by the SDP's official `mkqnximage` and booted with QEMU 8.2.2 from WSL with one vCPU:
+
+```bash
+qemu-system-x86_64 -enable-kvm -cpu host -smp 1 -m 1G \
+  -drive file=output/disk-qemu,format=raw,if=ide \
+  -netdev user,id=n0 -device virtio-net-pci,netdev=n0 \
+  -serial stdio -display none -monitor none -no-reboot
+```
+
+The guest identified itself as:
+
+```text
+QNX noname 8.0.0 2026/10/30-09:10:05EDT x86pc x86_64
+CPU:X86_64 Release:8.0.0  FreeMem:875MB/1023MB BootTime:Nov 27 04:47:59 UTC 2026
+Processes: 18, Threads: 97
+Processor1: 721582 Intel 686 F6M183S1 2119MHz FPU
+```
+
+The 71,760-byte x86_64 binary was copied into the guest and run as root:
+
+```sh
+/tmp/scheduloscope-harness -d 20000 -o /tmp/report.json
+```
+
+It completed the 19.999 s window and wrote JSON with `"platform": "qnx"`, `"duration_us": 19999155` and `"scheduling": "enforced"`. The observed rows were:
+
+| Task | Activations | Completed | Min us | Mean us | Max us | Deadline misses |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| safety | 9777 | 9777 | 126 | 885.9 | 11615 | 345 |
+| control | 12332 | 12332 | 455 | 1143.9 | 12763 | 14772 |
+| planner | 3940 | 3940 | 862 | 2025.1 | 12619 | 114 |
+| telemetry | 1000 | 1000 | 3371 | 5080.4 | 16852 | 0 |
+| logger | 1140 | 1140 | 585 | 2759.4 | 17209 | 0 |
+
+This proves the QNX backend executes and reports on QNX. It is **not** a schedulability claim: the guest had one vCPU, the workload busy-spins, and the observed misses are a property of this QEMU run, not a board result. Interrupt sources are still not reproduced (`"interrupts_reproduced": false`).
+
+### `mkifs` image
+
+The generated `image.build.template` was built with QNX SDP 8.0.6:
+
+```sh
+source D:/qnx800/qnxsdp-env.sh
+cd harness
+mkifs -v image.build.template image.ifs
+```
+
+`mkifs` exited 0 and produced an IFS containing `multiboot.boot`, `scheduloscope-harness`, `ldqnx-64.so.2`, `libc.so.6`, `libgcc_s.so.1`, `libm.so.3`, `libz.so.2`, `libtracelog.so.1`, `devc-ser8250`, `pipe` and `toybox`, with `cat -> toybox` and `/usr/lib/ldqnx-64.so.2 -> /proc/boot/ldqnx-64.so.2`. The QNX 8 fixes are in the template and covered by `tests/codegen.test.ts`: QNX 8 rejects `[data=copy]`, the loader is under `usr/lib`, `libc`/`libm` are versioned `.so.6`/`.so.3`, and `libz` lives under `usr/lib`.
+
+The standalone IFS was built but not booted as its own disk in this pass. The native run above used the official `mkqnximage` QEMU disk with the same binary, so the remaining `mkifs` step is board-specific boot packaging, not an unvalidated compiler path.
+
+### QSTI/QEMU package
+
+`com.qnx.qnx800.quickstart.qemu` was not installed. The QSC CLI request returned `401 Unauthorized`, and the GUI package install needs an authenticated session; the QSTI bundle is optional for this validation because QEMU 8.2.2 from Ubuntu booted the SDP-generated image. No credentials or licence values are recorded here.
+
+### Limits
+
+- One vCPU, QEMU/KVM, not a hardware board: the timings and misses above are runtime evidence, not a hardware latency claim.
+- AArch64 is compile-only; no AArch64 target or emulator was run.
+- The harness runs threads, not ISR/IST handlers, so interrupt interference remains outside the measured response times.
+
 
 ## Reproducing all of it
 

@@ -255,13 +255,12 @@ paths under AddressSanitizer and UndefinedBehaviorSanitizer.
 | Report and SVG generation | passing |
 | Generated C harness | compiles with `gcc -Wall -Wextra -Wundef -Werror`, runs under Linux, and stops cleanly on a partial startup, a failed stop/join, or an RPC chain |
 | QNX API usage | reviewed against the 8.0 reference pages (`docs/verification.md`) |
-| Generated C harness on QNX 8.0 | **not executed in this project** - the SDP requires a QNX account and license acceptance |
+| Generated C harness on QNX 8.0 | **built with QNX SDP 8.0.6 and run natively** on x86_64 in QEMU; AArch64 is compile-only |
 
-Being explicit about that last row is part of the design. The QNX backend is written against the
-8.0 C library and ships with the same `Makefile` and `image.build.template` in the repository, but
-it has not been built or run on QNX in this project. It is labelled build-ready rather than
-verified. [docs/verification.md](docs/verification.md) has the full matrix, the exact commands,
-and what each row would need to move to *verified*.
+The QNX backend was compiled with `qcc` 12.2.0 for x86_64 and AArch64, and the x86_64 binary was
+run on a QNX 8.0 guest in QEMU; the updated `image.build.template` also builds with `mkifs`.
+[docs/verification.md](docs/verification.md) records the exact commands, the native JSON, the
+single-vCPU caveat and the remaining board-specific boot packaging.
 
 ## As a library
 

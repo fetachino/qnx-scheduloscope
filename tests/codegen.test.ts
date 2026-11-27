@@ -186,38 +186,41 @@ test('the harness refuses to write a report when a thread cannot be configured',
   assert.match(harnessC, /rc = 1;\s*\n\s*goto shutdown;/);
 });
 
-test('the image build script installs the libraries the dynamic harness needs and a writable /tmp', () => {
+test('the image build script installs the QNX 8.0.6 loader, libraries and a writable /tmp', () => {
   const harness = generate();
   const build = harness.files.find((file) => file.path === 'image.build.template')!.content;
   // QNX 8 documents startup-x86 for x86_64; startup-x86_64 is not an 8.0 name.
-  assert.match(build, /startup-x86\b/);
+  assert.match(build, /startup-x86 -D8250\.\.115200 -zz/);
   assert.doesNotMatch(build, /startup-x86_64/);
   assert.doesNotMatch(build, /startup-x86-64/);
+  assert.match(build, /\[virtual=x86_64,multiboot\]/);
+  assert.match(build, /\[image=20m\]/);
   assert.match(build, /procnto-smp-instr -P 63/);
   // The IFS is mounted read-only, so /tmp must resolve to the kernel's shmem.
   assert.match(build, /\[type=link\] \/tmp=\/dev\/shmem/);
   assert.doesNotMatch(build, /\[type=dir perms=0777\] \/tmp/);
-  // Bare entries use mkifs' default proc/boot prefix. A directory-inline
-  // [data=copy] block would create one file named /proc/boot, not copy these.
-  assert.match(build, /\[data=copy\] scheduloscope-harness/);
-  assert.doesNotMatch(build, /\[data=copy\] \/proc\/boot = \{/);
-  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/ldqnx-64\.so\.2/);
-  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libc\.so/);
+  // QNX 8 removed [data=copy]; the harness is a normal file with exec perms.
+  assert.match(build, /\[uid=0 gid=0 perms=0755\] scheduloscope-harness=\.\/scheduloscope-harness/);
+  assert.doesNotMatch(build, /\[data=copy\]/);
+  // Exact versioned files installed by SDP 8.0.6, in both target library dirs.
+  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/usr\/lib\/ldqnx-64\.so\.2/);
+  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libc\.so\.6/);
   assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libgcc_s\.so\.1/);
-  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libm\.so/);
-  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libz\.so/);
+  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libm\.so\.3/);
+  assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/usr\/lib\/libz\.so\.2/);
   assert.match(build, /\$\{QNX_TARGET\}\/x86_64\/lib\/libtracelog\.so\.1/);
   // mkifs expands host variables as ${NAME}, not $NAME.
   assert.doesNotMatch(build, /^\$QNX_TARGET/m);
-  // Commands named by the boot script must be copied into the image too.
-  assert.match(build, /^devc-ser8250$/m);
+  // Commands named by the boot script are copied into the image too.
+  assert.match(build, /^toybox$/m);
+  assert.match(build, /^devc-ser8250=\$\{QNX_TARGET\}\/x86_64\/sbin\/devc-ser8250$/m);
+  assert.match(build, /^pipe=\$\{QNX_TARGET\}\/x86_64\/sbin\/pipe$/m);
+  assert.match(build, /^\[type=link\] cat=toybox$/m);
   assert.match(build, /devc-ser8250 &/);
-  assert.match(build, /^pipe$/m);
-  assert.match(build, /^cat$/m);
   assert.match(build, /reopen \/dev\/ser1/);
   assert.match(build, /cat \/tmp\/report\.json/);
-  assert.match(build, /^\/usr\/lib\/ldqnx-64\.so\.2=ldqnx-64\.so\.2$/m);
-  assert.doesNotMatch(build, /\[type=link\] \/usr\/lib\/ldqnx-64\.so\.2/);
+  assert.match(build, /^\[type=link\] \/usr\/lib\/ldqnx-64\.so\.2=\/proc\/boot\/ldqnx-64\.so\.2$/m);
+  assert.doesNotMatch(build, /\/usr\/lib\/ldqnx-64\.so\.2=ldqnx-64\.so\.2/);
   assert.match(build, /-o \/tmp\/report\.json/);
 });
 

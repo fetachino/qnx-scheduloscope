@@ -419,7 +419,7 @@ export function renderHtml(bundle: ReportBundle): string {
   body.push('<ul class="assumptions">');
   for (const caveat of [...new Set([...baseAssumptions(model), ...rta.caveats])]) body.push('<li>' + escapeXml(caveat) + '</li>');
   body.push('</ul>');
-  body.push('<p class="limit-callout"><strong>QNX boundary:</strong> no QNX SDP was available for this verification. The QNX backend and image template are build-ready and source-reviewed, not compiled, booted, or measured here. The POSIX harness checks are host checks, not QNX evidence.</p>');
+  body.push('<p class="limit-callout"><strong>QNX boundary:</strong> this report is model output, not a target measurement. The QNX backend was compiled and run natively during Phase 3B; see docs/verification.md for the evidence and limits. No number here is a hardware timing claim.</p>');
   body.push('<p class="section-note">Response-time bounds are analytical worst cases when the analysis proves them; a lower-bound result is a floor. The simulation is one deterministic schedule of the same model. A simulated latency above its bound is a modelling bug, not a nicer number.</p>');
   body.push('</section>');
 

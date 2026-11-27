@@ -37,15 +37,18 @@ If a thread cannot be given its modelled policy and priority, the harness stops
 with an explanatory error instead of returning numbers for a different system.
 
 `image.build.template` is a starting point for `mkifs`; it copies the harness,
-the QNX 8 dynamic loader `ldqnx-64.so.2`, `libc.so`, `libgcc_s.so.1` and the
-small `libm.so`, `libz.so` and `libtracelog.so.1` support set into `/proc/boot`
-(the default `mkifs` prefix), and creates the `/usr/lib/ldqnx-64.so.2` link the
-ELF interpreter needs. It also includes the `devc-ser8250`, `pipe` and `cat`
-commands named by the boot script; `devc-ser8250` runs with `&` because it is a
-daemon and would otherwise block the script. The IFS is read-only, so `/tmp` is a
-link to the kernel's writable `/dev/shmem`; the harness writes
-`-o /tmp/report.json` there and the script prints it to `/dev/ser1`. It has not
-been built or booted in this project.
+the QNX 8 dynamic loader `ldqnx-64.so.2`, `libc.so.6`, `libgcc_s.so.1` and the
+small `libm.so.3`, `libz.so.2` and `libtracelog.so.1` support set into
+`/proc/boot` (the default `mkifs` prefix), and creates the
+`/usr/lib/ldqnx-64.so.2` link the ELF interpreter needs. It also includes the
+`devc-ser8250`, `pipe` and `toybox`/`cat` commands named by the boot script;
+`devc-ser8250` runs with `&` because it is a daemon and would otherwise block
+the script. The IFS is read-only, so `/tmp` is a link to the kernel's writable
+`/dev/shmem`; the harness writes `-o /tmp/report.json` there and the script
+prints it to `/dev/ser1`. The template was built with QNX SDP 8.0.6 (`mkifs`
+exits 0), but the native run used the same binary in an official `mkqnximage`
+QEMU image; see `docs/verification.md` for the evidence and the remaining
+board-specific boot step.
 
 ## Build and run on a POSIX host
 
