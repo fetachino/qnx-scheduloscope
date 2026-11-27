@@ -5,6 +5,13 @@ the project adheres to Semantic Versioning.
 
 ## [Unreleased]
 
+Phase 5 added a 50-to-800-task scaling benchmark with JSON output and a repeatable QNX boot
+stress script. Three KVM boots and one TCG comparison all produced complete `platform: qnx`
+reports; KVM reduced the observed miss count and worst response versus TCG but remains an
+emulated one-vCPU workload, not a schedulability result. Report generation preflights both
+parent directories before writing either file, and the CLI suite now covers a blocked output path.
+The host suite is now 106 tests (102 passing, 4 QNX-preprocessing skips).
+
 Phase 4 interface and demo polish. The landing page now guides a first-time reader through three
 reports, names the model/hardware boundary, and links each claim to a runnable example. Generated
 reports gained a verdict explanation, task cards, an RTA walkthrough, a timeline table alternative,
@@ -13,7 +20,7 @@ priority-inversion demo now describes its actual four-task workload. Unbounded b
 as a lower bound rather than a deadline pass in both HTML and CLI output. Host suite is 103 tests
 (99 passing, 4 QNX-preprocessing skips without `gcc`). No scheduler semantics changed. The report's
 QNX boundary text now points to the Phase 3B native QEMU evidence instead of claiming no QNX SDP was
-available. A 2:43 narrated demo is published with the site; it labels the QNX runs as QEMU TCG
+available. A 2:48 narrated demo is published with the site; it labels the QNX runs as QEMU KVM/TCG
 evidence and names the remaining official QSTI and hardware-timing gaps.
 
 Phase 3B installed QNX SDP 8.0.6 and validated the native path: `qcc` 12.2.0 built the harness for
@@ -32,6 +39,13 @@ its Q-Boot loader, built with the same SDP. The generated AArch64 harness booted
 `"scheduling": "enforced"`. This is community-BSP runtime evidence, not the official QSTI image;
 the QSTI download still requires an authenticated session, and no hardware timing claim is made.
 The boot log and JSON are in `docs/qnx-aarch64-boot.txt` and `docs/qnx-aarch64-report.json`.
+
+A later KVM check corrected the Phase 3B note: the same x86_64 disk boots with
+`qemu-system-x86_64 -accel kvm -cpu host`, not only TCG. The earlier KVM attempt used `-cpu max`,
+which is not a KVM CPU model and stalled before the QNX banner. The KVM run wrote
+`duration_us: 29999853` and the same JSON shape, but still reports 23,283 control deadline misses
+on one vCPU. It is acceleration for an emulated guest, not hardware. The log and JSON are in
+`docs/qnx-kvm-boot.txt` and `docs/qnx-kvm-report.json`.
 
 Phase 3 source and build-configuration validation against the QNX SDP 8.0 reference. No SDP was
 installed, so this entry records corrections and tests only; it does not claim a native build,

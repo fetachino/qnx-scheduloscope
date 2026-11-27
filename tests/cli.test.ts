@@ -89,3 +89,30 @@ test('simulate reports the same verdict as the analysis', () => {
   assert.equal(parsed.deadlineMisses.length, 0);
 });
 
+test('report creates both files and their parent directories', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sched-report-'));
+  const html = join(dir, 'nested', 'report.html');
+  const md = join(dir, 'other', 'report.md');
+  const run = cli(['report', 'examples/motor-control.yaml', '--html', html, '--md', md]);
+  assert.equal(run.code, 0, run.err);
+  assert.ok(existsSync(html), 'missing HTML report');
+  assert.ok(existsSync(md), 'missing Markdown report');
+});
+
+test('a blocked report path exits 1 without writing the other file', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sched-report-blocked-'));
+  const blocked = join(dir, 'blocked');
+  writeFileSync(blocked, 'not a directory');
+  const html = join(blocked, 'report.html');
+  const md = join(dir, 'report.md');
+  const run = cli(['report', 'examples/motor-control.yaml', '--html', html, '--md', md]);
+  assert.equal(run.code, 1);
+  assert.match(run.err, /error/);
+  assert.equal(existsSync(md), false, 'must not leave a half-written report pair');
+});
+
+test('an unparseable simulation duration is a usage error', () => {
+  const run = cli(['simulate', 'examples/motor-control.yaml', '-d', 'not-a-duration']);
+  assert.equal(run.code, 2);
+  assert.match(run.err, /cannot parse --duration/);
+});

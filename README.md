@@ -13,7 +13,7 @@ estimates on a real QNX target once built with the QNX SDP.
 
 ![Scheduloscope report](assets/report.png)
 
-[Project site](https://fetachino.github.io/qnx-scheduloscope/) · [Watch the 2:43 narrated demo](https://fetachino.github.io/qnx-scheduloscope/demo.html) · [Open the generated report](https://fetachino.github.io/qnx-scheduloscope/demo/motor-control.html) — one self-contained HTML file, no server, no
+[Project site](https://fetachino.github.io/qnx-scheduloscope/) · [Watch the 2:48 narrated demo](https://fetachino.github.io/qnx-scheduloscope/demo.html) · [Open the generated report](https://fetachino.github.io/qnx-scheduloscope/demo/motor-control.html) — one self-contained HTML file, no server, no
 build step. The report starts with a verdict and reading guide, then explains the task set, the
 response-time terms, the simulated schedule, and every diagnostic.
 
@@ -215,8 +215,8 @@ BIOS boot-image template and has no matching AArch64 startup/driver lines. For A
 evidence the harness was added to a community QEMU BSP image (MIT-licensed `joexue/qemu-virt`,
 Q-Boot loader) and booted under `qemu-system-aarch64`; [docs/verification.md](docs/verification.md)
 records that path separately. The x86_64 template is a standalone IFS image: `mkifs`,
-`mkqnx6fsimg` and `diskimage` turn it into a bootable QNX6 disk, and that disk was booted in QEMU to
-produce the native JSON.
+`mkqnx6fsimg` and `diskimage` turn it into a bootable QNX6 disk, and that disk was booted in QEMU
+under KVM (`-accel kvm -cpu host`) to produce the native JSON.
 The harness prints a table and writes JSON with maximum, mean and per-task miss counts, plus the
 platform it ran on.
 
@@ -224,7 +224,7 @@ The same sources build on a normal Linux host through the POSIX backend.
 
 | Backend | Build | Purpose | Timing evidence |
 | --- | --- | --- | --- |
-| QNX | `qcc` with the QNX SDP | On-target measurement | Built with QNX SDP 8.0.6 and run natively in a QEMU QNX 8.0 guest; one vCPU, no hardware board |
+| QNX | `qcc` with the QNX SDP | On-target measurement | Built with QNX SDP 8.0.6 and run natively in a QEMU QNX 8.0 guest; one vCPU, x86_64 KVM, AArch64 TCG; no hardware board |
 | POSIX host | Host C compiler | Compile and exercise the harness logic in CI | Best-effort scheduling; not QNX evidence |
 
 ## Architecture
@@ -247,7 +247,7 @@ harness start from the same inputs and are intended to stay consistent.
 
 ## Verification
 
-Everything that can be checked on a host is checked on a host: 103 tests (99 run, 4
+Everything that can be checked on a host is checked on a host: 106 tests (102 run, 4
 QNX-preprocessing skips without `gcc`), a TypeScript build with `strict` and
 `noUncheckedIndexedAccess`, and a CI job that compiles the generated
 harness with `gcc -Wall -Wextra -Wundef -Werror`, runs it, and exercises its failure, RPC-chain and teardown
@@ -255,21 +255,21 @@ paths under AddressSanitizer and UndefinedBehaviorSanitizer.
 
 | Area | Status |
 | --- | --- |
-| Full test suite | 103 tests: 99 pass, 4 skip without `gcc`; 5/5 QNX preprocessing tests pass in the Linux container |
+| Full test suite | 106 tests: 102 pass, 4 skip without `gcc`; 5/5 QNX preprocessing tests pass in the Linux container |
 | RTA against hand-computed cases | passing (see `tests/rta.test.ts`) |
 | Simulator semantics (PI, PCP, RR, sporadic, ISR) | passing |
 | Report and SVG generation | passing |
 | Generated C harness | compiles with `gcc -Wall -Wextra -Wundef -Werror`, runs under Linux, and stops cleanly on a partial startup, a failed stop/join, or an RPC chain |
 | QNX API usage | reviewed against the 8.0 reference pages (`docs/verification.md`) |
-| Generated C harness on QNX 8.0 | **built with QNX SDP 8.0.6 and run natively** on x86_64 and AArch64 in QEMU; AArch64 uses a community BSP and Q-Boot |
+| Generated C harness on QNX 8.0 | **built with QNX SDP 8.0.6 and run natively** on x86_64 and AArch64 in QEMU; x86_64 uses KVM, AArch64 uses a community BSP and Q-Boot |
 
 The QNX backend was compiled with `qcc` 12.2.0 for x86_64 and AArch64, and both binaries ran in a
 QNX 8.0 guest. The x86_64 binary was packaged into a standalone BIOS IFS, booted from its own QNX6
-disk in QEMU, and wrote JSON with `"platform": "qnx"` and `"scheduling": "enforced"`. The AArch64
+disk in QEMU under KVM, and wrote JSON with `"platform": "qnx"` and `"scheduling": "enforced"`. The AArch64
 binary ran the same 30 s harness through the community BSP and Q-Boot path, also writing
 `"platform": "qnx"`; the installed SDP still has no official AArch64 startup, and the official QSTI
 QEMU package needs an authenticated QSC session. [docs/verification.md](docs/verification.md)
-records the exact commands, both JSON results, the single-vCPU TCG caveat, and the explicitly open
+records the exact commands, both JSON results, the single-vCPU emulator caveat, and the explicitly open
 gaps (QSTI authentication, official AArch64 QSTI target, hardware timing).
 
 ## As a library
@@ -299,6 +299,7 @@ Every export is typed and the entry point re-exports the model types.
   8.0 behaviour it mirrors.
 - [Analysis method](docs/analysis-method.md) - the response-time equation and each term.
 - [Verification](docs/verification.md) - the test matrix and the honest gaps.
+- [Performance and reliability](docs/performance.md) - host scaling, repeated QNX boots, and failure paths.
 - [Demo tour](docs/demo-tour.md) - six steps from a clean clone, with the output of each one.
 
 ## Repository layout

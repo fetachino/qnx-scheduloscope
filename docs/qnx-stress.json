@@ -1,0 +1,215 @@
+{
+  "recorded_at": "2026-11-27T21:11:20Z",
+  "qemu": "8.2.2",
+  "host": "WSL Ubuntu 24.04",
+  "smp": 1,
+  "memory_mb": 512,
+  "window_us": 30000000,
+  "ok": true,
+  "runs": [
+    {
+      "accelerator": "kvm",
+      "cpu": "host",
+      "qemu_exit": 124,
+      "wall_seconds": 50,
+      "platform": "qnx",
+      "scheduling": "enforced",
+      "duration_us": 30000331,
+      "tasks": [
+        {
+          "name": "safety",
+          "activations": 15000,
+          "completed": 15000,
+          "deadline_misses": 0,
+          "max_us": 1930,
+          "max_activation_latency_us": 1810
+        },
+        {
+          "name": "control",
+          "activations": 18670,
+          "completed": 18670,
+          "deadline_misses": 22640,
+          "max_us": 3454,
+          "max_activation_latency_us": 2084
+        },
+        {
+          "name": "planner",
+          "activations": 6000,
+          "completed": 6000,
+          "deadline_misses": 0,
+          "max_us": 3144,
+          "max_activation_latency_us": 2456
+        },
+        {
+          "name": "telemetry",
+          "activations": 1500,
+          "completed": 1500,
+          "deadline_misses": 0,
+          "max_us": 8146,
+          "max_activation_latency_us": 2745
+        },
+        {
+          "name": "logger",
+          "activations": 1741,
+          "completed": 1741,
+          "deadline_misses": 0,
+          "max_us": 7757,
+          "max_activation_latency_us": 6440
+        }
+      ]
+    },
+    {
+      "accelerator": "kvm",
+      "cpu": "host",
+      "qemu_exit": 124,
+      "wall_seconds": 50,
+      "platform": "qnx",
+      "scheduling": "enforced",
+      "duration_us": 29999500,
+      "tasks": [
+        {
+          "name": "safety",
+          "activations": 15000,
+          "completed": 15000,
+          "deadline_misses": 0,
+          "max_us": 1772,
+          "max_activation_latency_us": 1651
+        },
+        {
+          "name": "control",
+          "activations": 19489,
+          "completed": 19489,
+          "deadline_misses": 20993,
+          "max_us": 2255,
+          "max_activation_latency_us": 1788
+        },
+        {
+          "name": "planner",
+          "activations": 6000,
+          "completed": 6000,
+          "deadline_misses": 0,
+          "max_us": 3148,
+          "max_activation_latency_us": 2169
+        },
+        {
+          "name": "telemetry",
+          "activations": 1500,
+          "completed": 1500,
+          "deadline_misses": 0,
+          "max_us": 7024,
+          "max_activation_latency_us": 3096
+        },
+        {
+          "name": "logger",
+          "activations": 1741,
+          "completed": 1741,
+          "deadline_misses": 0,
+          "max_us": 8147,
+          "max_activation_latency_us": 6077
+        }
+      ]
+    },
+    {
+      "accelerator": "kvm",
+      "cpu": "host",
+      "qemu_exit": 124,
+      "wall_seconds": 50,
+      "platform": "qnx",
+      "scheduling": "enforced",
+      "duration_us": 29999481,
+      "tasks": [
+        {
+          "name": "safety",
+          "activations": 15000,
+          "completed": 15000,
+          "deadline_misses": 0,
+          "max_us": 1952,
+          "max_activation_latency_us": 1822
+        },
+        {
+          "name": "control",
+          "activations": 18787,
+          "completed": 18787,
+          "deadline_misses": 22402,
+          "max_us": 2961,
+          "max_activation_latency_us": 1974
+        },
+        {
+          "name": "planner",
+          "activations": 6000,
+          "completed": 6000,
+          "deadline_misses": 0,
+          "max_us": 3445,
+          "max_activation_latency_us": 2201
+        },
+        {
+          "name": "telemetry",
+          "activations": 1500,
+          "completed": 1500,
+          "deadline_misses": 0,
+          "max_us": 6559,
+          "max_activation_latency_us": 3454
+        },
+        {
+          "name": "logger",
+          "activations": 1740,
+          "completed": 1740,
+          "deadline_misses": 0,
+          "max_us": 8269,
+          "max_activation_latency_us": 6808
+        }
+      ]
+    },
+    {
+      "accelerator": "tcg",
+      "cpu": "max",
+      "qemu_exit": 124,
+      "wall_seconds": 55,
+      "platform": "qnx",
+      "scheduling": "enforced",
+      "duration_us": 30006620,
+      "tasks": [
+        {
+          "name": "safety",
+          "activations": 14995,
+          "completed": 14995,
+          "deadline_misses": 10,
+          "max_us": 2849,
+          "max_activation_latency_us": 2724
+        },
+        {
+          "name": "control",
+          "activations": 15272,
+          "completed": 15272,
+          "deadline_misses": 29338,
+          "max_us": 5838,
+          "max_activation_latency_us": 5067
+        },
+        {
+          "name": "planner",
+          "activations": 5999,
+          "completed": 5999,
+          "deadline_misses": 2,
+          "max_us": 8666,
+          "max_activation_latency_us": 6060
+        },
+        {
+          "name": "telemetry",
+          "activations": 1500,
+          "completed": 1500,
+          "deadline_misses": 0,
+          "max_us": 12911,
+          "max_activation_latency_us": 8742
+        },
+        {
+          "name": "logger",
+          "activations": 1695,
+          "completed": 1695,
+          "deadline_misses": 0,
+          "max_us": 17802,
+          "max_activation_latency_us": 17365
+        }
+      ]
+    }
+  ]
+}

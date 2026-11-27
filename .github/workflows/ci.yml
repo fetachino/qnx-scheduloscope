@@ -65,6 +65,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - run: npm run check:release
       - run: node dist/src/cli/main.js report examples/motor-control.yaml --out demo/
       - uses: actions/upload-artifact@v4
         with:

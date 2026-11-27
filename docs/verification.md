@@ -2,8 +2,10 @@
 
 This page records what was actually executed, on what, with which command, and what was not.
 Nothing on this page is projected or estimated: if a row says *not run*, the tool has never been built
-with `qcc`, and the row says so. A [2:43 narrated walkthrough](https://fetachino.github.io/qnx-scheduloscope/demo.html)
-tours the same evidence; the video adds no measurement beyond what is recorded here.
+with `qcc`, and the row says so. A [2:48 narrated walkthrough](https://fetachino.github.io/qnx-scheduloscope/demo.html)
+tours the same evidence; the video adds no measurement beyond what is recorded here. The
+[performance and reliability record](performance.md) covers host scaling, repeated QNX boots, and
+the blocked-output regression.
 
 ## Environment used for the checks below
 
@@ -16,7 +18,7 @@ tours the same evidence; the video adds no measurement beyond what is recorded h
 | C compiler | `gcc 13` for the documented container example; Debian `gcc 12` (bookworm) for the 52-check harness and the QNX preprocessing tests |
 | Docker | 29.9.2 |
 | QNX SDP | 8.0.6 Stable (8.0 Build 141), installed at `D:/qnx800`; QNX GCC 12.2.0 |
-| QEMU | 8.2.2 under WSL Ubuntu 24.04; x86_64 TCG with `-cpu max`; AArch64 with `-M virt,gic-version=3 -cpu cortex-a72` |
+| QEMU | 8.2.2 under WSL Ubuntu 24.04; x86_64 KVM with `-accel kvm -cpu host` (TCG fallback `-accel tcg -cpu max`); AArch64 with `-M virt,gic-version=3 -cpu cortex-a72` |
 
 ## Automated tests
 
@@ -25,7 +27,7 @@ npm ci
 npm test        # tsc -p tsconfig.json && node scripts/test.mjs
 ```
 
-Result: **103 tests, 99 passing, 0 failing, 4 skipped**, about 4 seconds. The four skips are the QNX preprocessing tests, which need `gcc`; the same file passes in the Linux container described below (5/5).
+Result: **106 tests, 102 passing, 0 failing, 4 skipped**, about 6 seconds. The four skips are the QNX preprocessing tests, which need `gcc`; the same file passes in the Linux container described below (5/5).
 
 | File | Tests | Covers |
 | --- | --- | --- |
@@ -235,19 +237,20 @@ The partition buildfiles used were:
 [partition=1 boot=true type=177 num_sectors=22192] "boot.part"
 ```
 
-The disk booted in QEMU 8.2.2 with:
+The disk booted in QEMU 8.2.2 under KVM with:
 
 ```sh
-qemu-system-x86_64 -accel tcg -cpu max -m 512M -smp 1 -nographic \
+qemu-system-x86_64 -accel kvm -cpu host -m 512M -smp 1 -nographic \
   -boot c -drive file=disk-test,format=raw,if=ide -no-reboot
 ```
 
 The loader printed `QNX v1.2d Boot Loader:`, then one dot as it loaded the IFS, then the QNX startup
 banner. The serial manager opened `/dev/ser1`, the harness ran its 30 s window, and the boot script
-printed the complete JSON report. This closes the standalone boot-packaging gap. KVM is not usable
-for this image in the same environment: `-enable-kvm -cpu host` prints the loader dots and then
-stalls before the QNX banner, so the recorded run uses TCG. That is an emulator/CPU-model limit,
-not a claim about a physical board.
+printed the complete JSON report. This closes the standalone boot-packaging gap. `-cpu host` is
+required: `-cpu max` is not a KVM CPU model and stalls before the QNX banner. The TCG fallback
+(`-accel tcg -cpu max`) is recorded in [`qnx-native-boot.txt`](qnx-native-boot.txt); the KVM run is
+in [`qnx-kvm-boot.txt`](qnx-kvm-boot.txt); the parsed report is [`qnx-kvm-report.json`](qnx-kvm-report.json).
+Neither is a claim about a physical board.
 
 `/tmp` cannot be a plain directory in the IFS: `mount_ifs` mounts the image read-only by default
 (see [`mount_ifs`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mount_ifs.html)).
@@ -273,7 +276,7 @@ reviewed against the QNX SDP 8.0 reference pages; each row names the page it was
 | [`ChannelDestroy`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/channeldestroy.html) | Both error paths and the shutdown path destroy the channel. | Corrected earlier from `ConnectDetach`, which detaches the connection, not the channel. |
 | [`ClockCycles`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/c/clockcycles.html) | Start and end timestamps, normalised with `cycles_per_sec` from `SYSPAGE_ENTRY(qtime)`. | Correct; cycle counts are the right clock for sub-microsecond jobs. |
 | [`procmgr_ability`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/procmgr_ability.html) | Asks for `PROCMGR_AID_PRIORITY` when a task priority or a `protect` mutex ceiling exceeds the `SS_PRIVILEGED_CEILING` generated from the model (63 by default). | Corrected. The check read an undefined macro and was silently compiled out; it now reads `SS_MAX_PRIORITY` from the generated `workload_config.h`. Without the ability `pthread_attr_setschedparam` or `pthread_mutexattr_setprioceiling` fails, and the harness stops with an explanation. The message points to root or to granting `PROCMGR_AID_PRIORITY`, not to changing `procnto -P`. |
-| [`mkifs`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mkifs.html) | `image.build.template`: `[image=8m]`, `[virtual=x86_64,bios] .bootstrap`, `startup-x86`, `procnto-smp-instr -P 63`, `[type=link] /tmp=/dev/shmem`, the harness and its dependency chain at the default `/proc/boot` prefix, real copies at `/system/lib`, and `/usr/lib/ldqnx-64.so.2=/proc/boot/ldqnx-64.so.2` for the ELF interpreter path. The `.script` starts `devc-ser8250 &` (a daemon would otherwise block the script) and installs `devc-ser8250`, `pipe` and `cat`. | Corrected and validated in Phase 3B. `multiboot` and `elf` images carry a multiboot header that `ipl-diskpc2-fsq6` rejects; the BIOS image boots. `/system/lib` needs real files, not a symlink, or secure services cannot load `libsecpol.so.1` and the serial port never appears. Built with QNX SDP 8.0.6 (`mkifs` exit 0), packaged as a standalone QNX6 boot partition, and booted under QEMU TCG; the harness produced the JSON report in the native section below. |
+| [`mkifs`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/m/mkifs.html) | `image.build.template`: `[image=8m]`, `[virtual=x86_64,bios] .bootstrap`, `startup-x86`, `procnto-smp-instr -P 63`, `[type=link] /tmp=/dev/shmem`, the harness and its dependency chain at the default `/proc/boot` prefix, real copies at `/system/lib`, and `/usr/lib/ldqnx-64.so.2=/proc/boot/ldqnx-64.so.2` for the ELF interpreter path. The `.script` starts `devc-ser8250 &` (a daemon would otherwise block the script) and installs `devc-ser8250`, `pipe` and `cat`. | Corrected and validated in Phase 3B. `multiboot` and `elf` images carry a multiboot header that `ipl-diskpc2-fsq6` rejects; the BIOS image boots. `/system/lib` needs real files, not a symlink, or secure services cannot load `libsecpol.so.1` and the serial port never appears. Built with QNX SDP 8.0.6 (`mkifs` exit 0), packaged as a standalone QNX6 boot partition, and booted under QEMU KVM (TCG fallback); the harness produced the JSON report in the native section below. |
 
 Both QNX Makefile targets pass `-std=c11 -D_QNX_SOURCE`. The [qcc manual](https://qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/q/qcc.html) says `-std=` restricts the libraries to that ISO standard and hides POSIX/QNX declarations unless `_QNX_SOURCE` is defined. Without it, calls such as `pthread_timedjoin`, `pthread_setname_np` and `ChannelCreate` would be implicitly declared. This is the QNX counterpart to the host's `-D_GNU_SOURCE`, and the codegen test asserts both target lines carry it.
 
@@ -300,7 +303,7 @@ installation.
 | QNX SDP | 8.0.6 Stable (8.0 Build 141), installed at `D:/qnx800` |
 | QNX compiler | GCC 12.2.0 for `gcc_ntox86_64` and `gcc_ntoaarch64le` |
 | Host | Windows 11 Home 10.0.26300; WSL Ubuntu 24.04 for QEMU |
-| QEMU | 8.2.2 under WSL; x86_64 TCG `-cpu max`; AArch64 `-M virt,gic-version=3 -cpu cortex-a72`; one vCPU |
+| QEMU | 8.2.2 under WSL; x86_64 KVM `-accel kvm -cpu host` (TCG fallback); AArch64 `-M virt,gic-version=3 -cpu cortex-a72`; one vCPU |
 | x86_64 binary | `scheduloscope-harness`, 71,760 bytes, ELF64 PIE, AMD x86-64 |
 | AArch64 binary | `scheduloscope-harness`, 72,728 bytes, ELF64 PIE, AArch64 |
 | x86_64 runtime | QNX 8.0.0 guest, one processor, JSON `"platform": "qnx"` |
@@ -348,26 +351,26 @@ diskimage -c disk.layout -o disk-test \
   -b D:/qnx800/target/qnx/x86_64/boot/sys/ipl-diskpc1-nomsg -p -z
 ```
 
-QEMU 8.2.2 booted that disk with one vCPU under TCG:
+QEMU 8.2.2 booted that disk with one vCPU under KVM:
 
 ```sh
-qemu-system-x86_64 -accel tcg -cpu max -m 512M -smp 1 -nographic \
+qemu-system-x86_64 -accel kvm -cpu host -m 512M -smp 1 -nographic \
   -boot c -drive file=disk-test,format=raw,if=ide -no-reboot
 ```
 
-The captured run (also saved as [`docs/qnx-native-boot.txt`](qnx-native-boot.txt)) shows the
+The captured run (also saved as [`docs/qnx-kvm-boot.txt`](qnx-kvm-boot.txt)) shows the
 complete native path:
 
 ```text
 QNX v1.2d Boot Loader: .
 non UEFI or UEFI+CSM boot
 ACPI table not found (0x4746434d)
-System behaves poorly without PCID support.
+overriding mask for controller 2, vector_base 0
 ...
-window 30.005 s, system motor-control
+window 30.000 s, system motor-control
 {
   "system": "motor-control",
-  "duration_us": 30005375,
+  "duration_us": 29999853,
   "platform": "qnx",
   "scheduling": "enforced",
   ...
@@ -378,21 +381,22 @@ The observed rows were:
 
 | Task | Activations | Completed | Min us | Mean us | Max us | Deadline misses + skipped |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| safety | 14993 | 14993 | 309 | 1042.5 | 3693 | 14 |
-| control | 15172 | 15172 | 397 | 1447.1 | 6016 | 29513 |
-| planner | 5999 | 5999 | 1028 | 2287.4 | 8819 | 2 |
-| telemetry | 1500 | 1500 | 3566 | 5368.5 | 12898 | 0 |
-| logger | 1694 | 1694 | 735 | 2985.1 | 13817 | 0 |
+| safety | 14997 | 14997 | 126 | 874.8 | 3262 | 6 |
+| control | 18322 | 18322 | 364 | 1161.7 | 4305 | 23283 |
+| planner | 5993 | 5993 | 971 | 1935.7 | 10858 | 13 |
+| telemetry | 1500 | 1500 | 3764 | 4928.2 | 9678 | 0 |
+| logger | 1736 | 1736 | 591 | 2536.4 | 14233 | 0 |
 
 This proves the QNX backend executes and reports on QNX from the generated image itself. It is
 **not** a schedulability claim: the guest has one vCPU, the workload busy-spins, and the observed
 misses are a property of this QEMU run, not a board result. Interrupt sources are still not
-reproduced (`"interrupts_reproduced": false`).
+reproduced (`"interrupts_reproduced": false`). The earlier TCG run is retained in
+[`qnx-native-boot.txt`](qnx-native-boot.txt); it produced `duration_us: 30005375` with the same
+JSON shape.
 
-KVM was not usable for this guest in the same environment. `-enable-kvm -cpu max` and
-`-enable-kvm -cpu host` both printed the QNX loader dots and then stalled before the QNX banner;
-TCG booted the same disk. The KVM result is recorded as an emulator limitation, not evidence about
-the image. The package build, partition layout and boot output are in the loader section above.
+KVM now works with `-accel kvm -cpu host`; earlier attempts with `-cpu max` stalled because that is
+not a KVM CPU model. KVM accelerates the guest but still emulates one vCPU; it is not hardware
+evidence. The package build, partition layout and boot output are in the loader section above.
 
 ### QSTI/QEMU package
 
@@ -455,11 +459,11 @@ What remains is the **official QSTI AArch64 package**, not AArch64 runtime itsel
 - **Official AArch64 QSTI target:** AArch64 runtime is validated through the community BSP above;
   the official QSTI AArch64 package is still behind the same authenticated session.
 - **Hardware-level timing:** no physical QNX board was available. All timing numbers come from a
-  one-vCPU QEMU guest, most recently under TCG.
+  one-vCPU QEMU guest: x86_64 under KVM, AArch64 under TCG.
 - **ISR/IST interference:** the harness measures threads, not interrupt handlers;
   `"interrupts_reproduced": false` is intentional.
-- **KVM:** the current QNX guest hangs under KVM in this environment, so TCG is the recorded
-  runtime path. This is not presented as a hardware result either way.
+- **KVM:** x86_64 now boots with `-accel kvm -cpu host`; `-cpu max` is not a KVM CPU model and
+  stalls. KVM is acceleration for an emulated guest, not hardware evidence.
 
 The earlier blockers that are now closed: QNX SDP installation, x86_64 native execution,
 standalone BIOS IFS boot packaging, and AArch64 native execution through a community QEMU BSP. The
@@ -507,9 +511,12 @@ diskimage -c disk.layout -o disk-test \
 Then, from WSL:
 
 ```sh
-qemu-system-x86_64 -accel tcg -cpu max -m 512M -smp 1 -nographic \
+qemu-system-x86_64 -accel kvm -cpu host -m 512M -smp 1 -nographic \
   -boot c -drive file=disk-test,format=raw,if=ide -no-reboot
 ```
+
+If KVM is unavailable, the TCG fallback is `-accel tcg -cpu max`; the run is slower but produces
+the same report shape.
 
 AArch64 runtime (community BSP; not the shipped x86_64 template):
 

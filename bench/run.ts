@@ -63,28 +63,33 @@ function measure(count: number): Row {
 
 // Distinct priorities, so every task has a well-defined place in the queue; a
 // tie would be charged as interference and make the verdict inconclusive.
-const sizes = [50, 100, 150, 200];
+const sizes = [50, 100, 200, 400, 800];
 const rows: Row[] = [];
 for (const size of sizes) rows.push(measure(size));
 
-const header = ['tasks', 'derive ms', 'analysis ms', 'simulate ms', 'switches', 'verdict'];
-const table = rows.map((row) => [
-  String(row.tasks),
-  row.deriveMs.toFixed(1),
-  row.analysisMs.toFixed(1),
-  row.simulateMs.toFixed(1),
-  String(row.switches),
-  row.verdict,
-]);
-const widths = header.map((title, index) =>
-  Math.max(title.length, ...table.map((cells) => cells[index]!.length)),
-);
-const line = (cells: string[]): string =>
-  cells.map((cell, index) => cell.padEnd(widths[index]!)).join('  ');
+const asJson = process.argv.includes('--json');
+if (asJson) {
+  console.log(JSON.stringify({ windowUs: 100_000, utilization: 0.6, sizes, rows }, null, 2));
+} else {
+  const header = ['tasks', 'derive ms', 'analysis ms', 'simulate ms', 'switches', 'verdict'];
+  const table = rows.map((row) => [
+    String(row.tasks),
+    row.deriveMs.toFixed(1),
+    row.analysisMs.toFixed(1),
+    row.simulateMs.toFixed(1),
+    String(row.switches),
+    row.verdict,
+  ]);
+  const widths = header.map((title, index) =>
+    Math.max(title.length, ...table.map((cells) => cells[index]!.length)),
+  );
+  const line = (cells: string[]): string =>
+    cells.map((cell, index) => cell.padEnd(widths[index]!)).join('  ');
 
-console.log(line(header));
-console.log(widths.map((width) => '-'.repeat(width)).join('  '));
-for (const cells of table) console.log(line(cells));
-console.log('');
-console.log('window 100ms, about 60% utilisation, periods 10ms..' + String(10_000 + (sizes[sizes.length - 1]! - 1) * 100) + 'us');
+  console.log(line(header));
+  console.log(widths.map((width) => '-'.repeat(width)).join('  '));
+  for (const cells of table) console.log(line(cells));
+  console.log('');
+  console.log('window 100ms, about 60% utilisation, periods 10ms..' + String(10_000 + (sizes[sizes.length - 1]! - 1) * 100) + 'us');
+}
 

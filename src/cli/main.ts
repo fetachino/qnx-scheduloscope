@@ -342,6 +342,8 @@ function commandReport(loaded: LoadedModel, values: Record<string, unknown>): nu
   const sim = simulate(bundle.model, { durationUs });
   const full: ReportBundle = { ...bundle, sim };
 
+  // Create both parent directories before writing either report. If one path
+  // is blocked, the command must not leave a half-written pair behind.
   mkdirSync(dirname(htmlPath), { recursive: true });
   mkdirSync(dirname(mdPath), { recursive: true });
   writeFileSync(htmlPath, renderHtml(full));
