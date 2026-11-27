@@ -325,7 +325,7 @@ The 71,760-byte x86_64 binary was copied into the guest and run as root:
 
 It completed the 19.999 s window and wrote JSON with `"platform": "qnx"`, `"duration_us": 19999155` and `"scheduling": "enforced"`. The observed rows were:
 
-| Task | Activations | Completed | Min us | Mean us | Max us | Deadline misses |
+| Task | Activations | Completed | Min us | Mean us | Max us | Deadline misses + skipped |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | safety | 9777 | 9777 | 126 | 885.9 | 11615 | 345 |
 | control | 12332 | 12332 | 455 | 1143.9 | 12763 | 14772 |
