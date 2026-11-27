@@ -8,9 +8,9 @@
      QEMU VIRT BIOS for QNX ifs image
 
 ** CPU 0 PE is not awake
- 
+
 Welcome to QNX 8.0.0 on !
- 
+
 Starting serial driver (/dev/ser1)
 Running Scheduloscope AArch64 harness
 [scheduloscope] the model contains interrupt sources; this harness runs threads, not ISR/IST handlers, so the measured response times exclude their interference
