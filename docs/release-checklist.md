@@ -1,8 +1,9 @@
 # Release readiness
 
-Last checked: 2026-11-27. This is a private npm package and a public GitHub repository; the
-checklist does not create a tag, GitHub release, YouTube upload, or Devpost submission.
-Those are deliberate account-owner actions.
+Last checked: 2026-11-27. This is a private npm package and a public GitHub repository. The
+repository now has a `v1.0.2` tag and GitHub release, and the demo video is public on YouTube.
+The Devpost form is complete through the final review step; accepting the Official Rules/ToS
+and pressing Submit remain account-owner actions.
 
 ## Gates
 
@@ -18,9 +19,9 @@ Those are deliberate account-owner actions.
 | Package install | pass | packed tarball installs; CLI `analyze` and `gen` run from the installed copy |
 | GitHub Pages build | pass | `npm run build:pages`; deploy workflow on `main` |
 | Demo asset | pass | `assets/scheduloscope-demo.mp4` and matching WebVTT |
-| Public YouTube video | **pending** | Rules require a public YouTube upload; project-hosted MP4 is only a mirror |
-| Devpost submission | **pending** | Needs the YouTube URL and explicit account-owner authorization |
-| Git tag / GitHub release | **not created** | Requires explicit release authorization |
+| Public YouTube video | pass | [youtu.be/kFMZu-l6YOc](https://youtu.be/kFMZu-l6YOc) is public; oEmbed returns 200 and the watch page is available logged out |
+| Devpost submission | **4/5, not submitted** | All form content is filled; the final Official Rules/ToS checkbox is intentionally left for the account owner |
+| Git tag / GitHub release | pass | annotated `v1.0.2` at `cff7e7c`; [release](https://github.com/fetachino/qnx-scheduloscope/releases/tag/v1.0.2) |
 
 ## Commands
 
@@ -51,8 +52,9 @@ installed copy starts, parses, and writes the harness files.
 
 - No npm publish: `private` is `true`, and the CLI is distributed through the repository and
   the documented `npx`/clone path.
-- No tag or GitHub release yet. The changelog has an `Unreleased` section; a version bump and
-  tag should be a separate, reviewed action.
+- `v1.0.2` is tagged at `cff7e7c` and published as a GitHub release. The changelog keeps an
+  `Unreleased` section for subsequent work; the tag includes the documentation refresh made
+  before release.
 - The public repository is the submission artifact. The GitHub Pages site is a convenience
   mirror, not the Devpost video requirement.
 - QSTI authentication and hardware-level timing remain external gaps, not release blockers for
@@ -60,8 +62,9 @@ installed copy starts, parses, and writes the harness files.
 
 ## Manual gates before submission
 
-- [ ] Upload `assets/scheduloscope-demo.mp4` to YouTube with **Public** visibility.
-- [ ] Add the public YouTube URL to the Devpost video field.
-- [ ] Re-read the Devpost form and repository description for accuracy.
-- [ ] Obtain explicit account-owner authorization before submitting the form.
-- [ ] If a release is wanted, review the version bump, changelog section, tag, and release notes.
+- [x] Upload `assets/scheduloscope-demo.mp4` to YouTube with **Public** visibility.
+- [x] Add the public YouTube URL to the Devpost video field.
+- [x] Re-read the Devpost form and repository description for accuracy.
+- [x] Review the version, changelog, tag, and release notes; `v1.0.2` is published.
+- [ ] Account owner must accept the Official Rules/ToS in Devpost and press **Submit project**.
+  That acceptance is intentionally not delegated.
