@@ -208,7 +208,7 @@
         <p class="lede">Scheduloscope models a QNX task set, computes a worst-case response-time bound where it can prove one, simulates the schedule, and generates a C harness for measuring the same workload on hardware.</p>
         <p class="actions">
           <a class="button primary" href="demo/motor-control.html">Open the baseline report</a>
-          <a class="button secondary" href="demo.html">Watch demo · 2:43</a>
+          <a class="button secondary" href="demo.html">Watch demo · 2:48</a>
           <a class="button secondary" href="#tour">Three-report tour</a>
         </p>
         <p class="hero-note"><span class="dot" aria-hidden="true"></span><span>Model and simulation output, not a target measurement. The QNX backend was compiled and booted in QEMU during Phase 3B; no QNX timing from this site is a hardware claim.</span></p>
@@ -350,7 +350,7 @@ npm test</code></pre>
         <table>
           <thead><tr><th scope="col">Backend</th><th scope="col">Purpose</th><th scope="col">Evidence</th></tr></thead>
           <tbody>
-            <tr><td>QNX</td><td>On-target workload measurement with QNX scheduling and IPC</td><td>Compiled with QNX SDP 8.0.6; the x86_64 harness was packaged into its own BIOS IFS, booted from a QNX6 disk in QEMU, and wrote JSON with <code>platform: qnx</code>. The AArch64 harness ran through a community QEMU BSP with Q-Boot. See verification.</td></tr>
+            <tr><td>QNX</td><td>On-target workload measurement with QNX scheduling and IPC</td><td>Compiled with QNX SDP 8.0.6; the x86_64 harness was packaged into its own BIOS IFS, booted from a QNX6 disk in QEMU under KVM, and wrote JSON with <code>platform: qnx</code>. The AArch64 harness ran under TCG through a community QEMU BSP with Q-Boot. See verification.</td></tr>
             <tr><td>POSIX host</td><td>Compile and exercise the same harness logic in CI</td><td>Built and tested on Linux with GCC and sanitizers; best-effort scheduling</td></tr>
           </tbody>
         </table>
@@ -368,13 +368,14 @@ npm test</code></pre>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/qnx-semantics.md">QNX semantics</a><span>What the model reproduces and where it stops.</span></li>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/analysis-method.md">Analysis method</a><span>The response-time equation and each term.</span></li>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/verification.md">Verification</a><span>Commands, test results, and the native QNX validation.</span></li>
+        <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/performance.md">Performance</a><span>Host scaling, QNX boot stress, and failure paths.</span></li>
         <li><a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/README.md">README</a><span>Quick start, architecture, and limitations.</span></li>
       </ul>
     </section>
 
     <section class="boundary" aria-labelledby="claims-title">
       <h2 id="claims-title">What this project does not claim</h2>
-      <p><strong>QNX SDP 8.0.6 was installed, the backend was compiled, and the x86_64 harness ran natively from its own standalone QNX boot image for Phase 3B.</strong> That image was built with <code>mkifs</code>, packaged with <code>mkqnx6fsimg</code> and <code>diskimage</code>, and booted in QEMU. The AArch64 harness also booted and wrote JSON through a public community BSP and Q-Boot image. QSTI download authentication, the official AArch64 QSTI target, and hardware-level timing remain explicitly open; no QNX timing number on this site is a hardware measurement. The host test suite and POSIX harness checks are real, and their limits are documented.</p>
+      <p><strong>QNX SDP 8.0.6 was installed, the backend was compiled, and the x86_64 harness ran natively from its own standalone QNX boot image.</strong> That image was built with <code>mkifs</code>, packaged with <code>mkqnx6fsimg</code> and <code>diskimage</code>, and booted in QEMU; the current x86_64 evidence uses KVM. The AArch64 harness also booted and wrote JSON through a public community BSP and Q-Boot image under TCG. QSTI download authentication, the official AArch64 QSTI target, and hardware-level timing remain explicitly open; no QNX timing number on this site is a hardware measurement. The host test suite and POSIX harness checks are real, and their limits are documented.</p>
     </section>
   </main>
 

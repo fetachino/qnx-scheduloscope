@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Scheduloscope demo — 2:43</title>
-  <meta name="description" content="A 2:43 narrated demo of Scheduloscope: QNX scheduling analysis, priority inversion, generated C, and QEMU boot evidence.">
+  <title>Scheduloscope demo — 2:48</title>
+  <meta name="description" content="A 2:48 narrated demo of Scheduloscope: QNX scheduling analysis, priority inversion, generated C, and QEMU boot evidence.">
   <meta name="theme-color" content="#0d1117">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1117'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%236ea8fe' stroke-width='5'/%3E%3Cpath d='M32 20v12l9 6' fill='none' stroke='%2356d364' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
   <style>
@@ -100,7 +100,7 @@
     </div>
   </header>
   <main id="main" class="wrap">
-    <p class="eyebrow">Recorded demo · 2:43</p>
+    <p class="eyebrow">Recorded demo · 2:48</p>
     <h1>Find the timing bug before the target does.</h1>
     <p class="lede">One YAML model becomes a response-time proof, a deterministic simulated schedule, a self-contained report, and a QNX C harness. The demo also shows the exact QNX 8.0.6 build and QEMU boot evidence — and the boundary of that evidence.</p>
     <div class="player">
@@ -134,7 +134,7 @@
     </section>
     <section class="boundary" aria-labelledby="boundary-title">
       <h2 id="boundary-title">What the QNX evidence is — and is not</h2>
-      <p><strong>The x86_64 harness was compiled with QNX SDP 8.0.6 / qcc 12.2.0, packaged into its own QNX6 BIOS image, and booted in QEMU TCG on one vCPU.</strong> That is runtime evidence in an emulator, not a hardware timing measurement. The AArch64 harness also booted and wrote JSON through a public community BSP and Q-Boot image. QSTI package installation, the official AArch64 QSTI target, and hardware-level timing remain explicitly open. The analytical and simulated numbers in the first half are model outputs, not target traces.</p>
+      <p><strong>The x86_64 harness was compiled with QNX SDP 8.0.6 / qcc 12.2.0, packaged into its own QNX6 BIOS image, and booted in QEMU under KVM with one vCPU.</strong> That is runtime evidence in an emulated guest, not a hardware timing measurement. The AArch64 harness also booted and wrote JSON through a public community BSP and Q-Boot image under TCG. QSTI package installation, the official AArch64 QSTI target, and hardware-level timing remain explicitly open. The analytical and simulated numbers in the first half are model outputs, not target traces.</p>
     </section>
   </main>
   <footer class="wrap">

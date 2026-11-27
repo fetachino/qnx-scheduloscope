@@ -85,33 +85,41 @@ The same model generates a C harness for QNX 8.0: real scheduling policies, real
 Make qnx builds x86_64; make qnx-arm builds AArch64.
 
 22
-00:01:58.160 --> 00:02:00.600
+00:01:58.160 --> 00:02:00.400
 QNX runs on both targets now.
 
 23
-00:02:00.600 --> 00:02:10.700
-x86_64 boots from its own BIOS IFS. AArch64 boots through a public MIT-licensed BSP and Q-Boot image, and the same generated harness writes platform qnx on both.
+00:02:00.400 --> 00:02:06.900
+x86_64 boots from its own BIOS IFS under KVM with host CPU.
 
 24
-00:02:10.700 --> 00:02:19.600
-These are QEMU TCG runs on one vCPU: runtime evidence, not hardware latency.
+00:02:06.900 --> 00:02:14.600
+AArch64 boots through a public MIT-licensed BSP and Q-Boot image under TCG, and the same generated harness writes platform qnx on both.
 
 25
-00:02:19.600 --> 00:02:26.060
-Official QSTI and physical-board timing remain open.
+00:02:14.600 --> 00:02:22.800
+I ran three KVM boots and one TCG comparison; all four wrote complete reports.
 
 26
-00:02:26.960 --> 00:02:28.689
-Everything is Apache 2.0.
+00:02:22.800 --> 00:02:27.600
+These are one-vCPU emulated guests: runtime reliability, not hardware latency.
 
 27
-00:02:28.689 --> 00:02:30.625
-One hundred and three tests.
+00:02:27.600 --> 00:02:31.000
+Official QSTI and physical-board timing remain open.
 
 28
-00:02:30.625 --> 00:02:38.922
-CI compiles the generated C with warnings as errors, and the repository says exactly what was measured and what was not.
+00:02:31.550 --> 00:02:33.550
+Everything is Apache 2.0.
 
 29
-00:02:38.922 --> 00:02:43.070
+00:02:33.550 --> 00:02:35.550
+One hundred and six tests.
+
+30
+00:02:35.550 --> 00:02:43.200
+CI compiles the generated C with warnings as errors, and the repository says exactly what was measured and what was not.
+
+31
+00:02:43.200 --> 00:02:47.600
 Scheduloscope: find the timing bug before the hardware does.
