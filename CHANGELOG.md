@@ -13,7 +13,8 @@ priority-inversion demo now describes its actual four-task workload. Unbounded b
 as a lower bound rather than a deadline pass in both HTML and CLI output. Host suite is 103 tests
 (99 passing, 4 QNX-preprocessing skips without `gcc`). No scheduler semantics changed. The report's
 QNX boundary text now points to the Phase 3B native QEMU evidence instead of claiming no QNX SDP was
-available.
+available. A 2:43 narrated demo is published with the site; it labels the QNX run as QEMU TCG
+evidence and repeats the AArch64, QSTI and hardware-timing gaps.
 
 Phase 3B installed QNX SDP 8.0.6 and validated the native path: `qcc` 12.2.0 built the harness for
 x86_64 and AArch64; the x86_64 binary ran on a one-vCPU QNX 8.0 QEMU guest and wrote a JSON report

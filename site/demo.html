@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scheduloscope demo — 2:43</title>
+  <meta name="description" content="A 2:43 narrated demo of Scheduloscope: QNX scheduling analysis, priority inversion, generated C, and QEMU boot evidence.">
+  <meta name="theme-color" content="#0d1117">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1117'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%236ea8fe' stroke-width='5'/%3E%3Cpath d='M32 20v12l9 6' fill='none' stroke='%2356d364' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d1117;
+      --panel: #12171f;
+      --panel-2: #0f141b;
+      --panel-3: #161d27;
+      --line: #26303c;
+      --line-strong: #344152;
+      --text: #e6edf3;
+      --muted: #9aa7b4;
+      --muted-2: #7d8a98;
+      --accent: #6ea8fe;
+      --warn: #e3b341;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { background: var(--bg); scroll-behavior: smooth; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration-color: rgba(110,168,254,0.45); text-underline-offset: 3px; }
+    a:hover { color: #a8ccff; text-decoration-color: currentColor; }
+    a:focus-visible, video:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+    h1, h2 { letter-spacing: -0.025em; line-height: 1.15; }
+    .skip-link { position: absolute; left: 16px; top: -64px; z-index: 50; padding: 10px 14px; border-radius: 6px; background: var(--text); color: var(--bg); font-weight: 650; text-decoration: none; }
+    .skip-link:focus { top: 12px; }
+    .wrap { width: min(1000px, calc(100% - 48px)); margin: 0 auto; }
+    .site-header-shell { position: sticky; top: 0; z-index: 20; background: rgba(13,17,23,0.94); border-bottom: 1px solid var(--line); backdrop-filter: blur(10px); }
+    .site-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 13px 0; }
+    .brand { color: var(--text); font-weight: 700; letter-spacing: -0.02em; font-size: 19px; text-decoration: none; white-space: nowrap; }
+    .brand span { color: var(--accent); }
+    .site-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-size: 13px; }
+    .site-nav a { color: var(--muted); padding: 7px 10px; border-radius: 6px; text-decoration: none; }
+    .site-nav a:hover, .site-nav a[aria-current="page"] { color: var(--text); background: var(--panel-3); }
+    .site-nav a.external { color: var(--muted-2); }
+    main { padding: 48px 0 64px; }
+    .eyebrow { margin: 0 0 10px; color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+    h1 { margin: 0 0 14px; font-size: clamp(34px, 5vw, 52px); max-width: 15ch; text-wrap: balance; }
+    .lede { margin: 0 0 24px; color: #c2ccd6; font-size: 17px; line-height: 1.6; max-width: 72ch; }
+    .player { aspect-ratio: 16 / 9; width: 100%; overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--radius); background: #000; box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+    .player video { display: block; width: 100%; height: 100%; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 11px 0 0; color: var(--muted); font-size: 12.5px; }
+    .meta a { font-weight: 600; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 0; }
+    .button { display: inline-flex; align-items: center; padding: 10px 15px; border-radius: 8px; font-weight: 650; font-size: 14px; text-decoration: none; }
+    .button.primary { background: var(--accent); color: #07111f; }
+    .button.secondary { border: 1px solid var(--line-strong); color: var(--text); background: var(--panel); }
+    .button:hover { filter: brightness(1.08); text-decoration: none; }
+    .panel, .boundary { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+    .panel { padding: 24px; margin-top: 26px; }
+    .panel h2 { margin: 0 0 8px; font-size: 21px; }
+    .panel p { margin: 0; color: #b9c2cc; font-size: 14px; }
+    .panel p + p { margin-top: 10px; }
+    .chapters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 24px; margin: 22px 0 0; padding: 0; list-style: none; }
+    .chapters li { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+    .chapters time { flex: 0 0 42px; color: var(--accent); font: 11px var(--mono); padding-top: 2px; }
+    .boundary { border-left: 3px solid var(--warn); padding: 18px 20px; margin-top: 22px; }
+    .boundary h2 { margin: 0 0 6px; font-size: 16px; }
+    .boundary p { margin: 0; color: #b9c2cc; font-size: 13px; }
+    .boundary strong { color: var(--text); }
+    footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; padding: 24px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+    footer a { color: var(--muted); }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    @media (max-width: 700px) {
+      .wrap { width: min(100% - 32px, 1000px); }
+      main { padding-top: 30px; }
+      .site-header { align-items: flex-start; flex-direction: column; gap: 7px; padding: 10px 0; }
+      .site-nav { margin-left: -10px; }
+      .site-nav a { padding: 6px 8px; }
+      .chapters { grid-template-columns: 1fr; }
+      .panel { padding: 19px; }
+      footer { flex-direction: column; gap: 4px; }
+      .button { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header-shell">
+    <div class="wrap site-header">
+      <a class="brand" href="index.html">Schedulo<span>scope</span></a>
+      <nav class="site-nav" aria-label="Project sections">
+        <a href="index.html">Overview</a>
+        <a href="demo.html" aria-current="page">Demo</a>
+        <a href="index.html#tour">Tour</a>
+        <a href="index.html#reports">Reports</a>
+        <a href="index.html#docs">Docs</a>
+        <a class="external" href="https://github.com/fetachino/qnx-scheduloscope">Source</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="wrap">
+    <p class="eyebrow">Recorded demo · 2:43</p>
+    <h1>Find the timing bug before the target does.</h1>
+    <p class="lede">One YAML model becomes a response-time proof, a deterministic simulated schedule, a self-contained report, and a QNX C harness. The demo also shows the exact QNX 8.0.6 build and QEMU boot evidence — and the boundary of that evidence.</p>
+    <div class="player">
+      <video controls preload="metadata" poster="assets/scheduloscope-demo-poster.png" width="1920" height="1080">
+        <source src="assets/scheduloscope-demo.mp4" type="video/mp4">
+        <track src="assets/scheduloscope-demo.vtt" kind="captions" srclang="en" label="English" default>
+        Your browser does not support the video tag. <a href="assets/scheduloscope-demo.mp4">Download the MP4</a>.
+      </video>
+    </div>
+    <p class="meta"><span>1920×1080 · 30 fps · H.264/AAC</span><span>Narration: synthetic SAPI voice</span><span><a href="assets/scheduloscope-demo.vtt">Captions</a></span></p>
+    <div class="actions">
+      <a class="button primary" href="https://github.com/fetachino/qnx-scheduloscope">Open the repository</a>
+      <a class="button secondary" href="demo/motor-control.html">Read the baseline report</a>
+      <a class="button secondary" href="index.html">Back to the project</a>
+    </div>
+    <section class="panel" aria-labelledby="about-title">
+      <h2 id="about-title">What the video covers</h2>
+      <p>The first half is design-time work: parse the model, run response-time analysis, show the 361 µs worst-case slack, then remove priority inheritance and watch the control task miss by 538 µs. The simulation exposes the mechanism — a 900 µs critical section, a middle-priority thread, and four inversions.</p>
+      <p>The second half is the target loop: generated QNX C, the SDP build, a standalone QNX6 BIOS image, and a QEMU guest that reports <code>platform: qnx</code> and <code>scheduling: enforced</code>. The close names the gaps rather than rounding them away.</p>
+      <ul class="chapters" aria-label="Video chapters">
+        <li><time>0:00</time><span>Title</span></li>
+        <li><time>0:17</time><span>The model</span></li>
+        <li><time>0:33</time><span>Analyze</span></li>
+        <li><time>0:53</time><span>Report</span></li>
+        <li><time>1:09</time><span>Change one line</span></li>
+        <li><time>1:24</time><span>Simulate</span></li>
+        <li><time>1:39</time><span>Generate</span></li>
+        <li><time>1:58</time><span>QNX evidence</span></li>
+        <li><time>2:26</time><span>Close</span></li>
+      </ul>
+    </section>
+    <section class="boundary" aria-labelledby="boundary-title">
+      <h2 id="boundary-title">What the QNX evidence is — and is not</h2>
+      <p><strong>The x86_64 harness was compiled with QNX SDP 8.0.6 / qcc 12.2.0, packaged into its own QNX6 BIOS image, and booted in QEMU TCG on one vCPU.</strong> That is runtime evidence in an emulator, not a hardware timing measurement. AArch64 runtime, QSTI package installation, and hardware-level timing remain explicitly open. The analytical and simulated numbers in the first half are model outputs, not target traces.</p>
+    </section>
+  </main>
+  <footer class="wrap">
+    <span>© 2026 Scheduloscope · Apache-2.0</span>
+    <span><a href="https://github.com/fetachino/qnx-scheduloscope">GitHub</a> · <a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/LICENSE">License</a> · <a href="https://github.com/fetachino/qnx-scheduloscope/blob/main/docs/verification.md">Verification</a></span>
+  </footer>
+</body>
+</html>

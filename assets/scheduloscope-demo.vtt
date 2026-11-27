@@ -1,0 +1,117 @@
+WEBVTT
+
+1
+00:00:00.350 --> 00:00:03.695
+On QNX, the hardest bugs are often not logic bugs.
+
+2
+00:00:03.695 --> 00:00:10.384
+They are timing bugs: a control loop that misses a deadline, or a safety thread blocked by a logger.
+
+3
+00:00:10.384 --> 00:00:13.595
+They are designed in before the hardware exists.
+
+4
+00:00:13.595 --> 00:00:16.940
+Scheduloscope makes that design review executable.
+
+5
+00:00:17.840 --> 00:00:26.574
+The whole design is one YAML file: five threads, their priorities and periods, a mutex, a service channel, and an interrupt.
+
+6
+00:00:26.574 --> 00:00:32.350
+The model uses QNX scheduling terms directly, not a generic real-time abstraction.
+
+7
+00:00:33.250 --> 00:00:36.440
+One command runs response-time analysis.
+
+8
+00:00:36.440 --> 00:00:42.102
+It includes blocking, interrupt interference, and context-switch costs.
+
+9
+00:00:42.102 --> 00:00:48.483
+Five tasks, 68.8 percent utilization, worst slack 361 microseconds: schedulable.
+
+10
+00:00:48.483 --> 00:00:52.550
+The report also names the term closest to the edge.
+
+11
+00:00:53.450 --> 00:00:56.815
+The same model becomes a self-contained HTML report.
+
+12
+00:00:56.815 --> 00:01:02.897
+It shows the actual simulated schedule: every context switch, critical section, and interrupt.
+
+13
+00:01:02.897 --> 00:01:08.720
+The one inversion is mitigated, because the logger inherited the safety thread's priority.
+
+14
+00:01:09.620 --> 00:01:14.658
+Now change one line: the mutex protocol is none instead of inherit.
+
+15
+00:01:14.658 --> 00:01:16.086
+The analysis fails.
+
+16
+00:01:16.086 --> 00:01:23.530
+Control misses by 538 microseconds, and the largest term is 900 microseconds of unbounded blocking.
+
+17
+00:01:24.430 --> 00:01:27.950
+The simulation shows the mechanism, not just the verdict.
+
+18
+00:01:27.950 --> 00:01:33.694
+The logger holds the lock, a middle-priority thread preempts it, and the safety thread waits.
+
+19
+00:01:33.694 --> 00:01:38.450
+That is priority inversion, caught in a design review instead of on a target.
+
+20
+00:01:39.350 --> 00:01:52.888
+The same model generates a C harness for QNX 8.0: real scheduling policies, real mutex protocols, a real channel with server threads, and ClockCycles timestamps.
+
+21
+00:01:52.888 --> 00:01:57.260
+Make qnx builds x86_64; make qnx-arm builds AArch64.
+
+22
+00:01:58.160 --> 00:02:01.199
+Phase 3B installed QNX SDP 8.0.6.
+
+23
+00:02:01.199 --> 00:02:13.629
+The x86_64 harness compiled with qcc, booted from its own QNX6 BIOS image in QEMU, and reported platform qnx, with scheduling enforced.
+
+24
+00:02:13.629 --> 00:02:20.996
+That is QEMU TCG, one vCPU: runtime evidence, not a hardware timing measurement.
+
+25
+00:02:20.996 --> 00:02:26.060
+AArch64 runtime and QSTI packages remain explicit gaps.
+
+26
+00:02:26.960 --> 00:02:28.689
+Everything is Apache 2.0.
+
+27
+00:02:28.689 --> 00:02:30.625
+One hundred and three tests.
+
+28
+00:02:30.625 --> 00:02:38.922
+CI compiles the generated C with warnings as errors, and the repository says exactly what was measured and what was not.
+
+29
+00:02:38.922 --> 00:02:43.070
+Scheduloscope: find the timing bug before the hardware does.

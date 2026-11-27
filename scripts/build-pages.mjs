@@ -6,7 +6,11 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const out = join(root, '_site');
 const sources = [
   ['site/index.html', 'index.html'],
+  ['site/demo.html', 'demo.html'],
   ['assets/report.png', 'assets/report.png'],
+  ['assets/scheduloscope-demo.mp4', 'assets/scheduloscope-demo.mp4'],
+  ['assets/scheduloscope-demo-poster.png', 'assets/scheduloscope-demo-poster.png'],
+  ['assets/scheduloscope-demo.vtt', 'assets/scheduloscope-demo.vtt'],
   ['demo/motor-control.html', 'demo/motor-control.html'],
   ['demo/motor-control-no-inherit.html', 'demo/motor-control-no-inherit.html'],
   ['demo/priority-inversion.html', 'demo/priority-inversion.html'],

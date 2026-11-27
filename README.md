@@ -13,7 +13,7 @@ estimates on a real QNX target once built with the QNX SDP.
 
 ![Scheduloscope report](assets/report.png)
 
-[Project site](https://fetachino.github.io/qnx-scheduloscope/) · [Open the generated report](https://fetachino.github.io/qnx-scheduloscope/demo/motor-control.html) — one self-contained HTML file, no server, no
+[Project site](https://fetachino.github.io/qnx-scheduloscope/) · [Watch the 2:43 narrated demo](https://fetachino.github.io/qnx-scheduloscope/demo.html) · [Open the generated report](https://fetachino.github.io/qnx-scheduloscope/demo/motor-control.html) — one self-contained HTML file, no server, no
 build step. The report starts with a verdict and reading guide, then explains the task set, the
 response-time terms, the simulated schedule, and every diagnostic.
 
