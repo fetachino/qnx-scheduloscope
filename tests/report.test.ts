@@ -44,6 +44,8 @@ test('html points to the native QNX evidence without claiming a target measureme
   const html = renderHtml(bundle());
   assert.match(html, /compiled with QNX SDP 8\.0\.6 and booted in QEMU/);
   assert.match(html, /x86_64 KVM; AArch64 TCG/);
+  assert.match(html, /<strong>QNX boundary:<\/strong>/);
+  assert.doesNotMatch(html, /Phase 3B/);
   assert.match(html, /No number in this report is a target measurement/);
   assert.doesNotMatch(html, /No QNX SDP was available/);
 });

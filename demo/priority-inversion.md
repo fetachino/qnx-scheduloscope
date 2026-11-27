@@ -2,7 +2,7 @@
 
 > A deliberately broken four-task variant. Telemetry and the sensor channel are omitted, the logger runs periodically, and its 900us stateLock critical section disables priority inheritance. Control can be delayed by the logger while a middle-priority thread runs, which is unbounded priority inversion.
 
-Generated 2026-11-27T22:16:23Z by Scheduloscope 1.0.2.
+Generated 2026-11-27T22:19:57Z by Scheduloscope 1.0.2.
 
 ## Verdict
 
