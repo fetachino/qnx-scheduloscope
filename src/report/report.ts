@@ -233,7 +233,7 @@ export function renderHtml(bundle: ReportBundle): string {
   body.push('<section class="boundary callout" aria-labelledby="boundary-title">' +
     '<div class="callout-mark" aria-hidden="true">i</div><div>' +
     '<h2 id="boundary-title">This is a model, not a QNX measurement</h2>' +
-    '<p>Response-time bounds come from fixed-priority analysis; the timeline is one deterministic simulation of the same model. No number in this report is a target measurement. A separate generated QNX harness was compiled and booted in QEMU during Phase 3B; its evidence and the remaining hardware gap are in docs/verification.md.</p>' +
+    '<p>Response-time bounds come from fixed-priority analysis; the timeline is one deterministic simulation of the same model. No number in this report is a target measurement. A separate generated QNX harness was compiled with QNX SDP 8.0.6 and booted in QEMU (x86_64 KVM; AArch64 TCG through a community BSP); its boot logs, repeat-run evidence, and the remaining hardware gap are in docs/verification.md and docs/qnx-stress.json.</p>' +
     '</div></section>');
 
   body.push('<section class="metric-section" aria-labelledby="metrics-title">');
