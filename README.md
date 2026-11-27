@@ -9,7 +9,8 @@
 
 Scheduloscope is a design-time scheduling analyzer and deterministic simulator for QNX OS 8.0
 systems, plus a generator that turns the same model into a C workload intended for measuring those
-estimates on a real QNX target once built with the QNX SDP.
+estimates on a QNX target once built with the QNX SDP. This repository validates that build and
+boot path in QEMU, not on physical hardware.
 
 ![Scheduloscope report](assets/report.png)
 
