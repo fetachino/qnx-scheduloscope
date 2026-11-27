@@ -10,8 +10,10 @@ reports, names the model/hardware boundary, and links each claim to a runnable e
 reports gained a verdict explanation, task cards, an RTA walkthrough, a timeline table alternative,
 inversion and miss tables, a glossary, accessible landmarks and a mobile section nav. The
 priority-inversion demo now describes its actual four-task workload. Unbounded blocking is labelled
-as a lower bound rather than a deadline pass in both HTML and CLI output. Host suite is 102 tests
-(98 passing, 4 QNX-preprocessing skips without `gcc`). No scheduler semantics changed.
+as a lower bound rather than a deadline pass in both HTML and CLI output. Host suite is 103 tests
+(99 passing, 4 QNX-preprocessing skips without `gcc`). No scheduler semantics changed. The report's
+QNX boundary text now points to the Phase 3B native QEMU evidence instead of claiming no QNX SDP was
+available.
 
 Phase 3B installed QNX SDP 8.0.6 and validated the native path: `qcc` 12.2.0 built the harness for
 x86_64 and AArch64; the x86_64 binary ran on a one-vCPU QNX 8.0 QEMU guest and wrote a JSON report
@@ -50,7 +52,7 @@ image, boot or QNX timing.
 
 ### Changed
 
-- Host test suite is 98 tests (94 passing, 4 QNX-preprocessing skips without `gcc`); the
+- Host test suite is 103 tests (99 passing, 4 QNX-preprocessing skips without `gcc`); the
   preprocessing tests pass 5/5 in the Linux container and `npm run check:c` passes 52 checks.
 
 ## [1.0.2] - 2026-11-26

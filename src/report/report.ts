@@ -233,7 +233,7 @@ export function renderHtml(bundle: ReportBundle): string {
   body.push('<section class="boundary callout" aria-labelledby="boundary-title">' +
     '<div class="callout-mark" aria-hidden="true">i</div><div>' +
     '<h2 id="boundary-title">This is a model, not a QNX measurement</h2>' +
-    '<p>Response-time bounds come from fixed-priority analysis; the timeline is one deterministic simulation of the same model. No QNX SDP was available here, so no native QNX build, image, boot, or timing measurement is claimed.</p>' +
+    '<p>Response-time bounds come from fixed-priority analysis; the timeline is one deterministic simulation of the same model. No number in this report is a target measurement. A separate generated QNX harness was compiled and booted in QEMU during Phase 3B; its evidence and the remaining hardware gap are in docs/verification.md.</p>' +
     '</div></section>');
 
   body.push('<section class="metric-section" aria-labelledby="metrics-title">');

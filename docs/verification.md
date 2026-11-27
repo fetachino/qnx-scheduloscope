@@ -24,7 +24,7 @@ npm ci
 npm test        # tsc -p tsconfig.json && node scripts/test.mjs
 ```
 
-Result: **102 tests, 98 passing, 0 failing, 4 skipped**, about 3 seconds. The four skips are the QNX preprocessing tests, which need `gcc`; the same file passes in the Linux container described below (5/5).
+Result: **103 tests, 99 passing, 0 failing, 4 skipped**, about 4 seconds. The four skips are the QNX preprocessing tests, which need `gcc`; the same file passes in the Linux container described below (5/5).
 
 | File | Tests | Covers |
 | --- | --- | --- |

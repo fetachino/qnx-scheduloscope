@@ -40,6 +40,13 @@ test('html is self-contained and embeds the generated SVG', () => {
   assert.doesNotMatch(html, /src="http/, 'no external assets: the report must open offline');
 });
 
+test('html points to the Phase 3B native evidence without claiming a target measurement', () => {
+  const html = renderHtml(bundle());
+  assert.match(html, /compiled and booted in QEMU during Phase 3B/);
+  assert.match(html, /No number in this report is a target measurement/);
+  assert.doesNotMatch(html, /No QNX SDP was available/);
+});
+
 test('html escapes model-provided text instead of injecting it', () => {
   const source = TWO_TASKS.replace('name: fast', 'name: <script>alert(1)</script>');
   const html = renderHtml(bundle(source));
