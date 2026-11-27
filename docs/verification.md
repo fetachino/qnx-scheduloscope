@@ -2,7 +2,8 @@
 
 This page records what was actually executed, on what, with which command, and what was not.
 Nothing on this page is projected or estimated: if a row says *not run*, the tool has never been built
-with `qcc`, and the row says so.
+with `qcc`, and the row says so. A [2:43 narrated walkthrough](https://fetachino.github.io/qnx-scheduloscope/demo.html)
+tours the same evidence; the video adds no measurement beyond what is recorded here.
 
 ## Environment used for the checks below
 
